@@ -1,0 +1,8 @@
+#! /usr/bin/env python3
+
+from savoia.portfolio.portfolio import func1
+
+print('run_backtest.py START')
+func1()
+
+print('run_backtest.py END')
