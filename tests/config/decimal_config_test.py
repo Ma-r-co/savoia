@@ -1,15 +1,16 @@
 import threading
 from savoia.config.decimal_config import initializeDecimalContext
 from decimal import getcontext
+from typing import List
 
 
 def test_initializeDecimalContext() -> None:
-    def worker(testList: list) -> None:
+    def worker(testList: List[str]) -> None:
         testList.append(str(getcontext()))
 
     initializeDecimalContext()
 
-    testlist: list = []
+    testlist: List[str] = []
     t1 = threading.Thread(target=worker, args=(testlist,))
     t2 = threading.Thread(target=worker, args=(testlist,))
     t1.start()

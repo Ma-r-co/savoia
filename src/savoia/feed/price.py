@@ -6,24 +6,12 @@ import re
 # import numpy as np
 import pandas as pd
 
-from savoia.event.event import TickEvent
+from savoia.event.event import Event, TickEvent
+from savoia.types.types import Pair, Price
 
 from logging import getLogger, Logger
-from typing import List, Optional, Dict, NewType, Tuple, Iterator
-from typing_extensions import TypedDict
+from typing import List, Dict, Tuple, Iterator
 from queue import Queue
-
-
-class Price(TypedDict):
-    """Price type defines the type of currency prices as of the
-    specified timestamp
-    """
-    bid: Optional[Decimal]
-    ask: Optional[Decimal]
-    time: Optional[pd.Timestamp]
-
-
-Pair = NewType('Pair', str)
 
 
 class PriceHandler(object):
@@ -44,7 +32,7 @@ class PriceHandler(object):
     """
     logger: Logger
     pairs: List[Pair]
-    events_queue: Queue
+    events_queue: 'Queue[Event]'
     prices: Dict[Pair, Price]
     continue_backtest: bool
     
@@ -83,7 +71,7 @@ class HistoricCSVPriceHandler(PriceHandler):
     cur_date_idx: int
     cur_date_pairs: pd.DataFrame
 
-    def __init__(self, pairs: List[Pair], events_queue: Queue, csv_dir: str) -> None:
+    def __init__(self, pairs: List[Pair], events_queue: 'Queue[Event]', csv_dir: str) -> None:
         """
         Initialises the historic data handler by requesting
         the location of the CSV files and a list of symbols.
