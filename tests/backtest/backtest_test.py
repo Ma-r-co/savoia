@@ -54,8 +54,8 @@ def bt1() -> Backtest:
     home_currency: str = 'JPY'
     leverage: Decimal = Decimal('1.0')
     risk_per_trade: Decimal = Decimal('0.8')
-    heartbeat: float = 0.01
-    max_iters: int = 7
+    heartbeat: float = 0.001
+    max_iters: int = 105
     return Backtest(
         pairs, data_handler, strategy, strategy_params, portfolio, execution, equity, home_currency, leverage, risk_per_trade,
         heartbeat, max_iters
@@ -70,8 +70,8 @@ def test_Backtest__init__(bt1: Backtest) -> None:
     assert bt1.strategy_params == {}
     assert isinstance(bt1.strategy, DummyStrategy)
     assert bt1.equity == Decimal('12345678.9')
-    assert bt1.heartbeat == 0.01
-    assert bt1.max_iters == 7
+    assert bt1.heartbeat == 0.001
+    assert bt1.max_iters == 105
     assert isinstance(bt1.portfolio, Portfolio)
     assert bt1.portfolio.isBacktest
     assert isinstance(bt1.execution, SimulatedExecution)
@@ -80,4 +80,4 @@ def test_Backtest__init__(bt1: Backtest) -> None:
 
 def test_max_run_backtest(bt1: Backtest) -> None:
     bt1._run_backtest()
-    assert bt1.iters == 7
+    assert bt1.iters == 105
