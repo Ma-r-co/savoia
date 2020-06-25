@@ -1,4 +1,3 @@
-from copy import deepcopy
 from decimal import Decimal
 from queue import Queue
 import os
@@ -19,42 +18,32 @@ from typing import Dict, TextIO
 class Portfolio(object):
     logger: Logger
     ticker: PriceHandler
-    events: 'Queue[Event]'
+    events_queue: 'Queue[Event]'
     home_currency: str
     leverage: Decimal
     equity: Decimal
     balance: Decimal
     risk_per_trade: Decimal
-    backtest: bool  # Todo: isBacktest
+    isBacktest: bool
     trade_units: Decimal
     positions: Dict[Pair, Position]
 
     def __init__(
-        self, ticker: PriceHandler, events: 'Queue[Event]', home_currency: str, leverage: Decimal,
-        equity: Decimal, risk_per_trade: Decimal, backtest: bool = True
-    ) -> None:
+        self, ticker: PriceHandler, events_queue: 'Queue[Event]', home_currency: str, leverage: Decimal,
+        equity: Decimal, risk_per_trade: Decimal, isBacktest: bool = True
+    ):
         self.logger = getLogger(__name__)
         self.ticker = ticker
-        self.events = events  # TODO: events_queue
+        self.events_queue = events_queue
         self.home_currency = home_currency
-        # TODO: Typecheck is not required here.
-        if isinstance(leverage, Decimal):
-            self.leverage = leverage
-        else:
-            raise TypeError('leverage should be Decimal. type(leverage) = %s.' % type(leverage))
-        if isinstance(equity, Decimal):
-            self.equity = equity
-        else:
-            raise TypeError('equity should be Decimal. type(equity) = %s' % type(equity))
-        self.balance = deepcopy(self.equity)
-        if isinstance(risk_per_trade, Decimal):
-            self.risk_per_trade = risk_per_trade
-        else:
-            raise TypeError('risk_per_trade should be Decimal. type(risk_per_trade) = %s' % type(risk_per_trade))
-        self.backtest = backtest
+        self.leverage = leverage
+        self.equity = equity
+        self.balance = self.equity
+        self.risk_per_trade = risk_per_trade
+        self.isBacktest = isBacktest
         self.trade_units = self.calc_risk_position_size()
         self.positions = {}
-        if self.backtest:
+        if self.isBacktest:
             self.backtest_file = self.create_equity_file()
 
     def calc_risk_position_size(self) -> Decimal:
@@ -104,7 +93,7 @@ class Portfolio(object):
             header += ",%s" % pair
         header += "\n"
         out_file.write(header)
-        if self.backtest:
+        if self.isBacktest:
             self.logger.info("Created equity file. Header as: %s", header[:-1])
         return out_file
 
@@ -141,7 +130,7 @@ class Portfolio(object):
         if currency_pair in self.positions:
             ps = self.positions[currency_pair]
             ps.update_position_price()
-        if self.backtest:
+        if self.isBacktest:
             out_line = "%s,%s" % (tick_event.time, self.balance)
             for pair in self.ticker.pairs:
                 if pair in self.positions:
@@ -207,7 +196,7 @@ class Portfolio(object):
                 elif side == "sell" and ps.position_type == "short":
                     self.add_position_units(currency_pair, units)
             order = OrderEvent(currency_pair, units, "market", side)
-            self.events.put(order)
+            self.events_queue.put(order)
             self.logger.info("Portfolio Balance: %s", self.balance)
         else:
             self.logger.info(

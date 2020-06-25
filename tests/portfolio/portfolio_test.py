@@ -72,8 +72,8 @@ class TestPortfolio(unittest.TestCase):
         ticker = TickerMock()
         events: 'Queue[Event]' = Queue()
         self.port = Portfolio(
-            ticker,
-            events,
+            ticker=ticker,
+            events_queue=events,
             home_currency=home_currency,
             leverage=leverage,
             equity=equity,
