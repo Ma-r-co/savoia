@@ -9,6 +9,13 @@ from typing import List, Dict
 from typing_extensions import TypedDict
 from queue import Queue
 from decimal import Decimal
+from abc import ABCMeta, abstractmethod
+
+
+class Strategy(metaclass=ABCMeta):
+    @abstractmethod
+    def calculate_signals(self, event: Event) -> None:
+        pass
 
 
 class DummyStrategy(object):

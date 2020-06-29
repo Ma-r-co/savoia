@@ -3,7 +3,7 @@ from savoia.backtest.backtest import Backtest
 from savoia.types.types import Pair
 from savoia.event.event import Event, TickEvent
 from savoia.feed.price import PriceHandler
-from savoia.strategy.strategy import DummyStrategy
+from savoia.strategy.strategy import DummyStrategy, Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution
 
@@ -46,7 +46,7 @@ class MockDataHandler(PriceHandler):
 def bt1() -> Backtest:
     pairs: List[Pair] = [Pair('USDJPY')]
     data_handler: PriceHandler = MockDataHandler
-    strategy: DummyStrategy = DummyStrategy
+    strategy: Strategy = DummyStrategy
     strategy_params: Dict[str, Decimal] = {}
     portfolio: Portfolio = Portfolio
     execution: SimulatedExecution = SimulatedExecution

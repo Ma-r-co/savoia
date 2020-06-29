@@ -5,7 +5,7 @@ from savoia.config.dir_config import CSV_DATA_DIR
 from savoia.types.types import Pair
 from savoia.event.event import Event
 from savoia.feed.price import PriceHandler
-from savoia.strategy.strategy import DummyStrategy
+from savoia.strategy.strategy import Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution
 
@@ -22,7 +22,7 @@ class Backtest(object):
     """
     pairs: List[Pair]
     data_handler: PriceHandler
-    strategy: DummyStrategy
+    strategy: Strategy
     strategy_params: Dict[str, Union[Decimal, str, bool]]
     portfolio: Portfolio
     execution: SimulatedExecution
@@ -37,11 +37,11 @@ class Backtest(object):
     events: 'Queue[Event]'
 
     def __init__(
-        self, pairs: List[Pair], data_handler: PriceHandler,
-        strategy: DummyStrategy,
-        strategy_params: Dict[str, Union[Decimal, str, bool]], portfolio: Portfolio, execution: SimulatedExecution,
-        equity: Decimal, home_currency: str, leverage: Decimal, risk_per_trade: Decimal,
-        heartbeat: float = 0.0, max_iters: int = 100000000
+        self, pairs: List[Pair], data_handler: PriceHandler, strategy: Strategy,
+        strategy_params: Dict[str, Union[Decimal, str, bool]], portfolio: Portfolio,
+        execution: SimulatedExecution, equity: Decimal, home_currency: str,
+        leverage: Decimal, risk_per_trade: Decimal, heartbeat: float = 0.0,
+        max_iters: int = 100000000
     ):
         """
         Initializes the backtest.
@@ -97,6 +97,8 @@ class Backtest(object):
                     elif event.type == 'ORDER':
                         self.logger.info("Excecution order! :%s" % event)
                         self.execution.execute_order(event)
+                    else:
+                        raise Exception
             time.sleep(self.heartbeat)
             self.iters += 1
 

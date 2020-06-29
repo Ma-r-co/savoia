@@ -12,9 +12,10 @@ from savoia.types.types import Pair, Price
 from logging import getLogger, Logger
 from typing import List, Dict, Tuple, Iterator
 from queue import Queue
+from abc import ABCMeta, abstractmethod
 
 
-class PriceHandler(object):
+class PriceHandler(metaclass=ABCMeta):
     """
     PriceHandler is an abstract base class providing an interface for
     all subsequent (inherited) data handlers (both live and historic).
@@ -57,6 +58,10 @@ class PriceHandler(object):
         inv_bid = (Decimal("1.0") / ask).quantize(DECIMAL_PLACES)
         inv_ask = (Decimal("1.0") / bid).quantize(DECIMAL_PLACES)
         return inv_pair, inv_bid, inv_ask
+
+    @abstractmethod
+    def stream_next_tick(self) -> None:
+        pass
 
 
 class HistoricCSVPriceHandler(PriceHandler):

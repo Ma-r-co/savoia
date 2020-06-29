@@ -52,7 +52,7 @@ class Portfolio(object):
     def add_new_position(
         self, position_type: str, currency_pair: Pair, units: int, ticker: PriceHandler
     ) -> None:
-        ps = Position(
+        ps: Position = Position(
             self.home_currency, position_type,
             currency_pair, units, ticker
         )

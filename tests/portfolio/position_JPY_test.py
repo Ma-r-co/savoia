@@ -45,15 +45,15 @@ class TestLongUSDJPYPosition(unittest.TestCase):
         )
 
     def test_calculate_init_pips(self) -> None:
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.08900000"))
 
     def test_calculate_init_profit_base(self) -> None:
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-178.00000000"))
 
     def test_calculate_init_profit_perc(self) -> None:
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.08027926"))
 
     def test_calculate_updated_values(self) -> None:
@@ -67,13 +67,13 @@ class TestLongUSDJPYPosition(unittest.TestCase):
         self.position.update_position_price()
 
         # Check pips
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("0.08400000"))
         # Check profit base
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("168.00000000"))
         # Check profit percentage
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("0.07576919"))
 
 
@@ -94,15 +94,15 @@ class TestShortUSDJPYPosition(unittest.TestCase):
         )
 
     def test_calculate_init_pips(self) -> None:
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.08900000"))
 
     def test_calculate_init_profit_base(self) -> None:
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-178.00000000"))
 
     def test_calculate_init_profit_perc(self) -> None:
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.08034376"))
 
     def test_calculate_updated_values(self) -> None:
@@ -116,13 +116,13 @@ class TestShortUSDJPYPosition(unittest.TestCase):
         self.position.update_position_price()
 
         # Check pips
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.18700000"))
         # Check profit base
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-374.00000000"))
         # Check profit percentage
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.16881218"))
 
 
@@ -147,15 +147,15 @@ class TestLongGBPUSDPosition(unittest.TestCase):
         )
 
     def test_calculate_init_pips(self) -> None:
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.00021000"))
 
     def test_calculate_init_profit_base(self) -> None:
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-46.52508000"))
 
     def test_calculate_init_profit_perc(self) -> None:
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.01396750"))
 
     def test_calculate_updated_values(self) -> None:
@@ -171,13 +171,13 @@ class TestLongGBPUSDPosition(unittest.TestCase):
         self.position.update_position_price()
 
         # Check pips
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("0.00137000"))
         # Check profit base
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("303.99478"))
         # Check profit percentage
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("0.09112132"))
 
 
@@ -198,15 +198,15 @@ class TestShortGBPUSDPosition(unittest.TestCase):
         )
 
     def test_calculate_init_pips(self) -> None:
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.00021000"))
 
     def test_calculate_init_profit_base(self) -> None:
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-46.56246000"))
 
     def test_calculate_init_profit_perc(self) -> None:
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.01396945"))
 
     def test_calculate_updated_values(self) -> None:
@@ -222,13 +222,13 @@ class TestShortGBPUSDPosition(unittest.TestCase):
         self.position.update_position_price()
 
         # Check pips
-        pos_pips = self.position.calculate_pips()
+        pos_pips = self.position._calculate_pips()
         self.assertEqual(pos_pips, Decimal("-0.00258000"))
         # Check profit base
-        profit_base = self.position.calculate_profit_base()
+        profit_base = self.position._calculate_profit_base()
         self.assertEqual(profit_base, Decimal("-572.55876000"))
         # Check profit percentage
-        profit_perc = self.position.calculate_profit_perc()
+        profit_perc = self.position._calculate_profit_perc()
         self.assertEqual(profit_perc, Decimal("-0.17162471"))
 
 

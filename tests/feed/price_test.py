@@ -9,7 +9,7 @@ import os
 @pytest.fixture(scope='function')
 def ph() -> PriceHandler:
     pairs = ["USDJPY", "GBPUSD"]
-    instance = PriceHandler()
+    instance = HistoricCSVPriceHandler(pairs, Queue(), './tests/feed')
     instance.pairs = pairs
     return instance
 
