@@ -1,6 +1,6 @@
 from decimal import Decimal
 from savoia.config.decimal_config import initializeDecimalContext, DECIMAL_PLACES
-from savoia.feed.price import PriceHandler
+from savoia.datafeed.price import PriceHandler
 from savoia.types.types import Pair
 
 

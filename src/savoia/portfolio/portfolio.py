@@ -4,7 +4,7 @@ import os
 
 import pandas as pd
 
-from savoia.feed.price import PriceHandler
+from savoia.datafeed.price import PriceHandler
 from savoia.event.event import OrderEvent, Event, TickEvent, SignalEvent
 from savoia.performance.performance import create_drawdowns
 from savoia.portfolio.position import Position

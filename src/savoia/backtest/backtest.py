@@ -4,7 +4,7 @@ import time
 from savoia.config.dir_config import CSV_DATA_DIR
 from savoia.types.types import Pair
 from savoia.event.event import Event
-from savoia.feed.price import PriceHandler
+from savoia.datafeed.price import PriceHandler
 from savoia.strategy.strategy import Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution

@@ -2,7 +2,7 @@ from savoia.backtest.backtest import Backtest
 
 from savoia.types.types import Pair
 from savoia.event.event import Event, TickEvent
-from savoia.feed.price import PriceHandler
+from savoia.datafeed.price import PriceHandler
 from savoia.strategy.strategy import DummyStrategy, Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution

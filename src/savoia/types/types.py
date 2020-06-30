@@ -1,6 +1,6 @@
 from decimal import Decimal
 import pandas as pd
-from typing import NewType, Optional
+from typing import NewType
 from typing_extensions import TypedDict
 
 Pair = NewType('Pair', str)
@@ -11,6 +11,6 @@ class Price(TypedDict):
     """Price type defines the type of currency prices as of the
     specified timestamp
     """
-    bid: Optional[Decimal]
-    ask: Optional[Decimal]
-    time: Optional[pd.Timestamp]
+    bid: Decimal
+    ask: Decimal
+    time: pd.Timestamp
