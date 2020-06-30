@@ -4,7 +4,7 @@ import os
 
 import pandas as pd
 
-from savoia.datafeed.price import PriceHandler
+from savoia.datafeed.ticker import Ticker
 from savoia.event.event import OrderEvent, Event, TickEvent, SignalEvent
 from savoia.performance.performance import create_drawdowns
 from savoia.portfolio.position import Position
@@ -17,7 +17,7 @@ from typing import Dict, TextIO
 
 class Portfolio(object):
     logger: Logger
-    ticker: PriceHandler
+    ticker: Ticker
     events_queue: 'Queue[Event]'
     home_currency: str
     leverage: Decimal
@@ -29,8 +29,9 @@ class Portfolio(object):
     positions: Dict[Pair, Position]
 
     def __init__(
-        self, ticker: PriceHandler, events_queue: 'Queue[Event]', home_currency: str, leverage: Decimal,
-        equity: Decimal, risk_per_trade: Decimal, isBacktest: bool = True
+        self, ticker: Ticker, events_queue: 'Queue[Event]', home_currency: str,
+        leverage: Decimal, equity: Decimal, risk_per_trade: Decimal,
+        isBacktest: bool = True
     ):
         self.logger = getLogger(__name__)
         self.ticker = ticker
@@ -49,9 +50,8 @@ class Portfolio(object):
     def calc_risk_position_size(self) -> Decimal:
         return self.equity * self.risk_per_trade
 
-    def add_new_position(
-        self, position_type: str, currency_pair: Pair, units: int, ticker: PriceHandler
-    ) -> None:
+    def add_new_position(self, position_type: str, currency_pair: Pair,
+            units: int, ticker: Ticker) -> None:
         ps: Position = Position(
             self.home_currency, position_type,
             currency_pair, units, ticker
@@ -119,7 +119,8 @@ class Portfolio(object):
         df["Drawdown"] = drawdown
         df.to_csv(out_file, index=True)
 
-        self.logger.info("Simulation complete and results exported to %s", out_filename)
+        self.logger.info("Simulation complete and results exported to %s",
+            out_filename)
 
     def update_portfolio(self, tick_event: TickEvent) -> None:
         """
@@ -181,7 +182,8 @@ class Portfolio(object):
                         pass
                         self.close_position(currency_pair)
                         self.add_new_position(
-                            "short", currency_pair, units - ps.units, self.ticker
+                            "short", currency_pair, units - ps.units,
+                            self.ticker
                         )
                 elif side == "buy" and ps.position_type == "short":
                     if units == ps.units:

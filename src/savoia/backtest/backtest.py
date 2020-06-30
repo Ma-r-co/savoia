@@ -4,7 +4,8 @@ import time
 from savoia.config.dir_config import CSV_DATA_DIR
 from savoia.types.types import Pair
 from savoia.event.event import Event
-from savoia.datafeed.price import PriceHandler
+from savoia.datafeed.datafeed import DataFeeder
+from savoia.datafeed.ticker import Ticker
 from savoia.strategy.strategy import Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution
@@ -21,7 +22,7 @@ class Backtest(object):
     an event-driven backtest on the foreign exchange markets.
     """
     pairs: List[Pair]
-    data_handler: PriceHandler
+    data_handler: DataFeeder
     strategy: Strategy
     strategy_params: Dict[str, Union[Decimal, str, bool]]
     portfolio: Portfolio
@@ -37,11 +38,12 @@ class Backtest(object):
     events: 'Queue[Event]'
 
     def __init__(
-        self, pairs: List[Pair], data_handler: PriceHandler, strategy: Strategy,
-        strategy_params: Dict[str, Union[Decimal, str, bool]], portfolio: Portfolio,
-        execution: SimulatedExecution, equity: Decimal, home_currency: str,
-        leverage: Decimal, risk_per_trade: Decimal, heartbeat: float = 0.0,
-        max_iters: int = 100000000
+        self, pairs: List[Pair], data_feeder: DataFeeder, ticker: Ticker,
+        strategy: Strategy,
+        strategy_params: Dict[str, Union[Decimal, str, bool]],
+        portfolio: Portfolio, execution: SimulatedExecution, equity: Decimal,
+        home_currency: str, leverage: Decimal, risk_per_trade: Decimal,
+        heartbeat: float = 0.0, max_iters: int = 100000000
     ):
         """
         Initializes the backtest.
@@ -49,7 +51,8 @@ class Backtest(object):
         self.pairs = pairs
         self.events = Queue()
         self.csv_dir = CSV_DATA_DIR
-        self.ticker = data_handler(self.pairs, self.events, self.csv_dir)
+        self.ticker = Ticker(self.pairs)
+        self.data_feeder = data_feeder(self.ticker, self.events, self.csv_dir)
         self.strategy_params = strategy_params
         self.strategy = strategy(
             pairs=self.pairs,
@@ -82,11 +85,12 @@ class Backtest(object):
         exceeded.
         """
         self.logger.info("Running Backtest...")
-        while self.iters < self.max_iters and self.ticker.continue_backtest:
+        while self.iters < self.max_iters and \
+                self.data_feeder.continue_backtest:
             try:
                 event = self.events.get(False)
             except Empty:
-                self.ticker.stream_next_tick()
+                self.data_feeder.stream_next_tick()
             else:
                 if event is not None:
                     if event.type == 'TICK':
