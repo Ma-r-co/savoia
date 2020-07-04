@@ -71,7 +71,7 @@ class Backtest(object):
             risk_per_trade=risk_per_trade,
             isBacktest=True
         )
-        self.execution = execution()
+        self.execution = execution(self.events)
         self.logger = getLogger(__name__)
         self.iters = 0
 
@@ -101,6 +101,9 @@ class Backtest(object):
                     elif event.type == 'ORDER':
                         self.logger.info("Excecution order! :%s" % event)
                         self.execution.execute_order(event)
+                    elif event.type == 'FILL':
+                        self.logger.info("Fill event! :%s" % event)
+                        self.portfolio.execute_fill(event)
                     else:
                         raise Exception
             time.sleep(self.heartbeat)

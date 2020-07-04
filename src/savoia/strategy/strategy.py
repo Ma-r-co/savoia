@@ -71,7 +71,8 @@ class MovingAverageCrossStrategy(object):
             pairs_dict[p] = copy.deepcopy(attr_dict)
         return pairs_dict
 
-    def calc_rolling_sma(self, sma_m_1: Decimal, window: int, price: Decimal) -> Decimal:
+    def calc_rolling_sma(self, sma_m_1: Decimal, window: int, price: Decimal) \
+            -> Decimal:
         return ((sma_m_1 * (window - 1)) + price) / window
 
     def calculate_signals(self, event: Event) -> None:

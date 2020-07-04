@@ -5,7 +5,8 @@ import os
 import pandas as pd
 
 from savoia.datafeed.ticker import Ticker
-from savoia.event.event import OrderEvent, Event, TickEvent, SignalEvent
+from savoia.event.event import OrderEvent, Event, TickEvent, \
+    SignalEvent, FillEvent
 from savoia.performance.performance import create_drawdowns
 from savoia.portfolio.position import Position
 from savoia.config.dir_config import OUTPUT_RESULTS_DIR
@@ -204,3 +205,6 @@ class Portfolio(object):
             self.logger.info(
                 "Unable to execute order as price data was insufficient."
             )
+
+    def execute_fill(self, event: FillEvent) -> None:
+        pass

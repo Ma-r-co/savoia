@@ -1,5 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from savoia.event.event import OrderEvent
+from savoia.event.event import OrderEvent, FillEvent, Event
+from savoia.types.types import Pair
+
+from queue import Queue
+from decimal import Decimal
 
 
 class ExecutionHandler(metaclass=ABCMeta):
@@ -7,6 +11,9 @@ class ExecutionHandler(metaclass=ABCMeta):
     Provides an abstract base class to handle all execution in the
     backtesting and live trading system.
     """
+    @abstractmethod
+    def __init__(self, events_queue: 'Queue[Event]'):
+        pass
 
     @abstractmethod
     def execute_order(self, event: OrderEvent) -> None:
@@ -15,10 +22,27 @@ class ExecutionHandler(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def _return_fill_event(self, pair: Pair, units: Decimal, price: Decimal,
+            side: str, status: str) -> None:
+        """Return a Fill event"""
+        pass
+
 
 class SimulatedExecution(ExecutionHandler):
+    events_queue: 'Queue[Event]'
+
+    def __init__(self, events_queue: 'Queue[Event]') -> None:
+        self.events_queue = events_queue
+
     def execute_order(self, event: OrderEvent) -> None:
-        pass
+        import random
+        self._return_fill_event(event.instrument, event.units,
+            Decimal(str(random.uniform(0.9889, 1.1212))), event.side, 'filled')
+
+    def _return_fill_event(self, pair: Pair, units: Decimal, price: Decimal,
+            side: str, status: str) -> None:
+        self.events_queue.put(FillEvent(pair, units, price, side, status))
 
 
 # class OANDAExecutionHandler(ExecutionHandler):
