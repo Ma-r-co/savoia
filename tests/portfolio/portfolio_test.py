@@ -6,7 +6,7 @@ from queue import Queue
 import pandas as pd
 
 from savoia.portfolio.portfolio import Portfolio
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from savoia.config.dir_config import OUTPUT_RESULTS_DIR
 from savoia.event.event import Event, SignalEvent, OrderEvent, FillEvent, \
     TickEvent

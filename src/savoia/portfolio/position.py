@@ -1,6 +1,6 @@
 from decimal import Decimal
 from savoia.config.decimal_config import DECIMAL_PLACES
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from savoia.portfolio.trade import Trade
 from savoia.types.types import Pair, Price
 

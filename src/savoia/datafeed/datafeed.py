@@ -1,7 +1,7 @@
 from decimal import Decimal
 from savoia.config.decimal_config \
     import initializeDecimalContext, DECIMAL_PLACES
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 
 import os
 import re

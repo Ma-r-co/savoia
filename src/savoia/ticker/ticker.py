@@ -1,10 +1,10 @@
 from decimal import Decimal
 from savoia.config.decimal_config import DECIMAL_PLACES
 
-# import numpy as np
 import pandas as pd
 
 from savoia.types.types import Pair, Price
+from savoia.event.event import TickEvent
 
 from logging import getLogger, Logger
 from typing import List, Dict, Tuple
@@ -50,3 +50,22 @@ class Ticker(object):
         inv_bid = (Decimal("1.0") / ask).quantize(DECIMAL_PLACES)
         inv_ask = (Decimal("1.0") / bid).quantize(DECIMAL_PLACES)
         return inv_pair, inv_bid, inv_ask
+
+    def update_ticker(self, event: TickEvent) -> None:
+        '''Updates prices upon TickEvent'''
+        _pair: Pair
+        _bid: Decimal
+        _ask: Decimal
+
+        if event.type != 'TICK':
+            raise Exception(f"Incorrect EventType: {event.type}, " +
+                "expected 'TICK' event.")
+        else:
+            _pair = event.instrument
+            _bid = event.bid
+            _ask = event.ask
+            self.prices[_pair]['bid'] = _bid
+            self.prices[_pair]['ask'] = _ask
+            inv_pair, inv_bid, inv_ask = self.invert_prices(_pair, _bid, _ask)
+            self.prices[inv_pair]["bid"] = inv_bid
+            self.prices[inv_pair]["ask"] = inv_ask

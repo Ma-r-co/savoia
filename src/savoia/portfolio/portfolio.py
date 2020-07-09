@@ -4,7 +4,7 @@ import os
 
 import pandas as pd
 
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from savoia.event.event import OrderEvent, Event, TickEvent, \
     SignalEvent, FillEvent
 from savoia.performance.performance import create_drawdowns
