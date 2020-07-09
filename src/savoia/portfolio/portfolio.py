@@ -13,7 +13,7 @@ from savoia.config.dir_config import OUTPUT_RESULTS_DIR
 from savoia.types.types import Pair
 
 from logging import getLogger, Logger
-from typing import Dict, TextIO
+from typing import Dict, TextIO, List
 
 
 class Portfolio(object):
@@ -21,72 +21,37 @@ class Portfolio(object):
     ticker: Ticker
     events_queue: 'Queue[Event]'
     home_currency: str
-    leverage: Decimal
     equity: Decimal
     balance: Decimal
-    risk_per_trade: Decimal
+    upl: Decimal
     isBacktest: bool
-    trade_units: Decimal
+    pairs: List[Pair]
     positions: Dict[Pair, Position]
 
     def __init__(
         self, ticker: Ticker, events_queue: 'Queue[Event]', home_currency: str,
-        leverage: Decimal, equity: Decimal, risk_per_trade: Decimal,
-        isBacktest: bool = True
+        pairs: List[Pair], equity: Decimal, isBacktest: bool = True
     ):
         self.logger = getLogger(__name__)
         self.ticker = ticker
         self.events_queue = events_queue
         self.home_currency = home_currency
-        self.leverage = leverage
         self.equity = equity
         self.balance = self.equity
-        self.risk_per_trade = risk_per_trade
+        self.upl = Decimal('0')
+        self.pairs = pairs
         self.isBacktest = isBacktest
-        self.trade_units = self.calc_risk_position_size()
-        self.positions = {}
+        self.positions = self._initialize_positions()
         if self.isBacktest:
-            self.backtest_file = self.create_equity_file()
+            self.backtest_file = self._create_equity_file()
 
-    def calc_risk_position_size(self) -> Decimal:
-        return self.equity * self.risk_per_trade
+    def _initialize_positions(self) -> Dict[Pair, Position]:
+        _pos = {}
+        for _pair in self.pairs:
+            _pos[_pair] = Position(self.home_currency, _pair, self.ticker)
+        return _pos
 
-    def add_new_position(self, position_type: str, currency_pair: Pair,
-            units: int, ticker: Ticker) -> None:
-        ps: Position = Position(
-            self.home_currency, position_type,
-            currency_pair, units, ticker
-        )
-        self.positions[currency_pair] = ps
-
-    def add_position_units(self, currency_pair: Pair, units: int) -> bool:
-        if currency_pair not in self.positions:
-            return False
-        else:
-            ps = self.positions[currency_pair]
-            ps.add_units(units)
-            return True
-
-    def remove_position_units(self, currency_pair: Pair, units: int) -> bool:
-        if currency_pair not in self.positions:
-            return False
-        else:
-            ps: Position = self.positions[currency_pair]
-            pnl: Decimal = ps.remove_units(units)
-            self.balance += pnl
-            return True
-
-    def close_position(self, currency_pair: Pair) -> bool:
-        if currency_pair not in self.positions:
-            return False
-        else:
-            ps: Position = self.positions[currency_pair]
-            pnl: Decimal = ps.close_position()
-            self.balance += pnl
-            del[self.positions[currency_pair]]
-            return True
-
-    def create_equity_file(self) -> TextIO:
+    def _create_equity_file(self) -> TextIO:
         filename: str = "backtest.csv"
         out_file: TextIO = open(os.path.join(OUTPUT_RESULTS_DIR, filename), "w")
         header: str = "Timestamp,Balance"
@@ -123,88 +88,56 @@ class Portfolio(object):
         self.logger.info("Simulation complete and results exported to %s",
             out_filename)
 
-    def update_portfolio(self, tick_event: TickEvent) -> None:
+    def update_portfolio(self, event: TickEvent) -> None:
         """
         This updates all positions ensuring an up to date
         unrealised profit and loss (PnL).
         """
-        currency_pair = tick_event.instrument
-        if currency_pair in self.positions:
-            ps = self.positions[currency_pair]
-            ps.update_position_price()
+        _delta_upl: Decimal
+        _delta_upl = self.positions[event.instrument].update_position_price()
+        self._update_equity(Decimal('0'), _delta_upl)
         if self.isBacktest:
-            out_line = "%s,%s" % (tick_event.time, self.balance)
+            out_line = f'{event.time}, {self.equity}'
             for pair in self.ticker.pairs:
-                if pair in self.positions:
-                    out_line += ",%s" % self.positions[pair].profit_base
-                else:
-                    out_line += ",0.00"
+                out_line += ",{self.positions[pair].upl}"
             out_line += "\n"
             self.backtest_file.write(out_line)
 
-    def execute_signal(self, signal_event: SignalEvent) -> None:
+    def execute_signal(self, event: SignalEvent) -> None:
+        '''Handles SignalEvent'''
         # Check that the prices ticker contains all necessary
         # currency pairs prior to executing an order
-        execute = True
-        tp = self.ticker.prices
-        for pair in tp:
-            if tp[pair]["ask"] is None or tp[pair]["bid"] is None:
-                execute = False
+        _execute = True
+        for pair in self.ticker.prices:
+            if None in self.ticker.prices[pair].values():
+                _execute = False
 
         # All necessary pricing data is available,
         # we can execute
-        if execute:
-            side = signal_event.side
-            currency_pair = signal_event.instrument
-            units = int(self.trade_units)
-
-            # If there is no position, create one
-            if currency_pair not in self.positions:
-                if side == "buy":
-                    position_type = "long"
-                else:
-                    position_type = "short"
-                self.add_new_position(
-                    position_type, currency_pair, units, self.ticker
-                )
-
-            # If a position exists add or remove units
-            else:
-                ps = self.positions[currency_pair]
-
-                if side == "buy" and ps.position_type == "long":
-                    self.add_position_units(currency_pair, units,)
-                elif side == "sell" and ps.position_type == "long":
-                    if units == ps.units:
-                        self.close_position(currency_pair)
-                    elif units < ps.units:
-                        self.remove_position_units(currency_pair, units)
-                    elif units > ps.units:
-                        pass
-                        self.close_position(currency_pair)
-                        self.add_new_position(
-                            "short", currency_pair, units - ps.units,
-                            self.ticker
-                        )
-                elif side == "buy" and ps.position_type == "short":
-                    if units == ps.units:
-                        self.close_position(currency_pair)
-                    elif units < ps.units:
-                        self.remove_position_units(currency_pair, units)
-                    elif units > ps.units:
-                        self.close_position(currency_pair)
-                        self.add_new_position(
-                            "long", currency_pair, units - ps.units, self.ticker
-                        )
-                elif side == "sell" and ps.position_type == "short":
-                    self.add_position_units(currency_pair, units)
-            order = OrderEvent(currency_pair, units, "market", side)
+        if _execute:
+            order = OrderEvent(event.ref, event.instrument, event.units,
+                event.order_type, event.time, event.price)
             self.events_queue.put(order)
-            self.logger.info("Portfolio Balance: %s", self.balance)
+            self.logger.info(f"OrderEvent Issued: {order}")
         else:
             self.logger.info(
                 "Unable to execute order as price data was insufficient."
             )
 
     def execute_fill(self, event: FillEvent) -> None:
-        pass
+        '''Handles FillEvent'''
+        _delta_balance: Decimal
+        _delta_upl: Decimal
+
+        _delta_balance, _delta_upl = \
+            self.positions[event.instrument].reflect_filled_order(
+                event.units, event.price
+            )
+
+        self._update_equity(_delta_balance, _delta_upl)
+
+    def _update_equity(self, delta_balance: Decimal, delta_upl: Decimal) \
+            -> None:
+        self.balance += delta_balance
+        self.upl += delta_upl
+        self.equity = self.balance + self.upl

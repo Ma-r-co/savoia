@@ -1,437 +1,242 @@
 from decimal import Decimal
-import unittest
 import os
 import pytest
 
 from queue import Queue
+import pandas as pd
 
 from savoia.portfolio.portfolio import Portfolio
+from savoia.datafeed.ticker import Ticker
 from savoia.config.dir_config import OUTPUT_RESULTS_DIR
-from savoia.event.event import Event
-
-from typing import Union
-
-
-class TickerMock(object):
-    """
-    A mock object that allows a representation of the
-    ticker/pricing handler.
-    """
-
-    def __init__(self) -> None:
-        self.pairs = ["GBPUSD", "EURUSD"]
-        self.prices = {
-            "GBPUSD": {"bid": Decimal("1.50328"), "ask": Decimal("1.50349")},
-            "USDGBP": {"bid": Decimal("0.66521"), "ask": Decimal("0.66512")},
-            "EURUSD": {"bid": Decimal("1.07832"), "ask": Decimal("1.07847")}
-        }
+from savoia.event.event import Event, SignalEvent, OrderEvent, FillEvent, \
+    TickEvent
+from savoia.types.types import Pair
 
 
-class MockSignalEvent():
-    def __init__(self, instrument: str, order_type: str, side: str, time: str) -> None:
-        self.type = 'SIGNAL'
-        self.instrument = instrument
-        self.order_type = order_type
-        self.side = side
-        self.time = time  # Time of the last tick that generated the signal
+# ================================================================
+# update_position_price()
+# ================================================================
+@pytest.fixture(scope='function')
+def TickerMock() -> Ticker:
+    _pairs = ["GBPUSD", "USDJPY"]
+    _prices = {
+        "GBPUSD": {"bid": Decimal("1.2541"), "ask": Decimal("1.2543")},
+        "USDJPY": {"bid": Decimal("107.25"), "ask": Decimal("107.80")},
+    }
+    tm = Ticker(_pairs)
+    # Create decimalaised prices for trade pair
+    for pair, price in _prices.items():
+        _bid, _ask = price['bid'], price['ask']
+        tm.prices[pair]["bid"] = _bid
+        tm.prices[pair]["ask"] = _ask
+        # Create decimalised prices for inverted pair
+        inv_pair, inv_bid, inv_ask = tm.invert_prices(pair, _bid, _ask)
+        tm.prices[inv_pair]["bid"] = inv_bid
+        tm.prices[inv_pair]["ask"] = inv_ask
+    return tm
 
-    def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Order Type: %s, Side: %s, Time: %s" % (
-            str(self.type), str(self.instrument),
-            str(self.order_type), str(self.side), str(self.time)
+
+@pytest.fixture(scope='function')
+def port(TickerMock: Ticker) -> Portfolio:
+    ticker = TickerMock
+    events: 'Queue[Event]' = Queue()
+    home_currency = "JPY"
+    pairs = ['GBPUSD', 'USDJPY']
+    equity = Decimal("1234567")
+    port = Portfolio(ticker, events, home_currency, pairs, equity)
+    return port
+
+
+def test_init_(port: Portfolio, TickerMock: Ticker) -> None:
+    assert port.ticker is TickerMock
+    assert isinstance(port.events_queue, Queue)
+    assert port.home_currency == 'JPY'
+    assert port.equity == Decimal('1234567')
+    assert port.balance == Decimal('1234567')
+    assert port.upl == Decimal('0')
+    assert port.pairs == ['GBPUSD', 'USDJPY']
+    assert port.isBacktest
+    assert len(port.positions) == 2
+
+
+def test_create_equity_file(port: Portfolio) -> None:
+    out_file = port._create_equity_file()
+    filepath = os.path.join(OUTPUT_RESULTS_DIR, "backtest.csv")
+    assert out_file.name == str(filepath)
+    assert os.path.isfile(filepath)
+
+    out_file.close()
+    with open(filepath, "r") as f:
+        assert f.read() == "Timestamp,Balance,GBPUSD,USDJPY\n"
+
+
+@pytest.mark.parametrize("pair, order_type, units, time, price, ref", [
+    ("GBPUSD", "limit", "3000", "2020-07-08 12:00:00", '1.234', '11111'),
+    ("USDJPY", "market", "-0.9", "2020-07-09 03:03:50", None, '11111'),
+])
+def test_execute_signal(pair: str, order_type: str, units: str, time: str,
+        price: str, port: Portfolio, ref: str) -> None:
+    _price = None if price is None else Decimal(price)
+    port.execute_signal(SignalEvent(ref, pair, order_type, Decimal(units),
+        pd.Timestamp(time), _price))
+    _order: OrderEvent = port.events_queue.get()
+    
+    assert _order.instrument == pair
+    assert _order.units == Decimal(units)
+    assert _order.order_type == order_type
+    assert _order.time == pd.Timestamp(time)
+    assert _order.price == _price
+
+
+@pytest.mark.parametrize("pair, order_type, units, time, quote, ref", [
+    ("GBPUSD", "market", "3000", "2020-07-08 12:00:00", "ask", "11111"),
+    ("USDJPY", "market", "-0.9", "2020-07-09 03:03:50", "bid", "22222"),
+])
+def test_execute_signal_lackofticker(port: Portfolio,
+                                    pair: str,
+                                    order_type: str,
+                                    units: str,
+                                    time: str,
+                                    quote: str, ref: str) -> None:
+    from testfixtures import LogCapture
+
+    tmp = port.ticker.prices[pair][quote]
+    port.ticker.prices[pair][quote] = None
+    print(port.ticker.prices[pair])
+    with LogCapture() as log:
+        port.execute_signal(event=SignalEvent(ref, pair, order_type,
+            Decimal(units), pd.Timestamp(time)))
+        log.check(
+            ('savoia.portfolio.portfolio', 'INFO', "Unable to execute order " +
+             'as price data was insufficient.')
         )
-
-    def __repr__(self) -> str:
-        return str(self)
+    port.ticker.prices[pair][quote] = tmp
 
 
-class MockSignalEventSell():
-    def __init__(self) -> None:
-        self.type = 'SIGNAL'
-        self.instrument = "EURUSD"
-        self.order_type = "market"
-        self.side = "sell"
-        self.time = "dummy"  # Time of the last tick that generated the signal
-
-    def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Order Type: %s, Side: %s" % (
-            str(self.type), str(self.instrument),
-            str(self.order_type), str(self.side)
-        )
-
-    def __repr__(self) -> str:
-        return str(self)
+# ================================================================
+# execute_fill()
+# ================================================================
+@pytest.fixture(scope='function')
+def port1(TickerMock1: Ticker) -> Portfolio:
+    ticker = TickerMock1
+    events: 'Queue[Event]' = Queue()
+    home_currency = "JPY"
+    pairs = ['GBPUSD', 'USDJPY']
+    equity = Decimal("100000")
+    port1 = Portfolio(ticker, events, home_currency, pairs, equity)
+    return port1
 
 
-class TestPortfolio(unittest.TestCase):
-    def setUp(self) -> None:
-        home_currency = "GBP"
-        leverage = Decimal("20")
-        equity = Decimal("100000.00")
-        risk_per_trade = Decimal("0.02")
-        ticker = TickerMock()
-        events: 'Queue[Event]' = Queue()
-        self.port = Portfolio(
-            ticker=ticker,
-            events_queue=events,
-            home_currency=home_currency,
-            leverage=leverage,
-            equity=equity,
-            risk_per_trade=risk_per_trade)
-
-    def test_calc_risk_position_size(self) -> None:
-        assert self.port.trade_units ==\
-            self.port.equity * self.port.risk_per_trade
-
-    def test_add_position_long(self) -> None:
-        position_type = "long"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-
-        self.assertEqual(ps.position_type, position_type)
-        self.assertEqual(ps.currency_pair, currency_pair)
-        self.assertEqual(ps.units, units)
-        self.assertEqual(ps.avg_price, ticker.prices[currency_pair]["ask"])
-        self.assertEqual(ps.cur_price, ticker.prices[currency_pair]["bid"])
-
-    def test_add_position_short(self) -> None:
-        position_type = "short"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-
-        self.assertEqual(ps.position_type, position_type)
-        self.assertEqual(ps.currency_pair, currency_pair)
-        self.assertEqual(ps.units, units)
-        self.assertEqual(ps.avg_price, ticker.prices[currency_pair]["bid"])
-        self.assertEqual(ps.cur_price, ticker.prices[currency_pair]["ask"])
-
-    def test_add_position_units_long(self) -> None:
-        position_type = "long"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        add_units = Decimal("1000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.add_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and test for real position
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertTrue(apu)
-        self.assertEqual(ps.avg_price, Decimal("1.50875333"))
-
-    def test_add_position_units_short(self) -> None:
-        position_type = "short"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        add_units = Decimal("1000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.add_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and test for real position
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertTrue(apu)
-        self.assertEqual(ps.avg_price, Decimal("1.50844667"))
-
-    def test_remove_position_units_long(self) -> None:
-        position_type = "long"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.remove_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and then add units to it
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-
-        add_units = Decimal("8000")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertEqual(ps.units, 10000)
-        self.assertEqual(ps.avg_price, Decimal("1.51612200"))
-
-        # Test removal of (some) of the units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.52017")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.52134")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65782")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65732")
-
-        remove_units = Decimal("3000")
-        rpu = self.port.remove_position_units(currency_pair, remove_units)
-        self.assertTrue(rpu)
-        self.assertEqual(ps.units, Decimal("7000"))
-        self.assertEqual(self.port.balance, Decimal("100007.99"))
-
-    def test_remove_position_units_short(self) -> None:
-        position_type = "short"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.remove_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and then add units to it
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-
-        add_units = Decimal("8000")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertEqual(ps.units, 10000)
-        self.assertEqual(ps.avg_price, Decimal("1.5156800"))
-
-        # Test removal of (some) of the units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.52017")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.52134")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65782")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65732")
-
-        remove_units = Decimal("3000")
-        rpu = self.port.remove_position_units(currency_pair, remove_units)
-        self.assertTrue(rpu)
-        self.assertEqual(ps.units, Decimal("7000"))
-        self.assertEqual(self.port.balance, Decimal("99988.84"))
-
-    def test_close_position_long(self) -> None:
-        position_type = "long"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.remove_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and then add units to it
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-
-        add_units = Decimal("8000")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertEqual(ps.units, 10000)
-        self.assertEqual(ps.avg_price, Decimal("1.516122"))
-
-        # Test removal of (some) of the units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.52017")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.52134")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65782")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65732")
-
-        remove_units = Decimal("3000")
-        rpu = self.port.remove_position_units(currency_pair, remove_units)
-        self.assertTrue(rpu)
-        self.assertEqual(ps.units, Decimal("7000"))
-        self.assertEqual(self.port.balance, Decimal("100007.99"))
-
-        # Close the position
-        cp = self.port.close_position(currency_pair)
-        self.assertTrue(cp)
-        self.assertRaises(KeyError, lambda: self.port.positions[currency_pair])
-        self.assertEqual(self.port.balance, Decimal("100026.63"))
-
-    def test_close_position_short(self) -> None:
-        position_type = "short"
-        currency_pair = "GBPUSD"
-        units = Decimal("2000")
-        ticker = TickerMock()
-
-        # Test for no position
-        alt_currency_pair = "USDCAD"
-        apu = self.port.remove_position_units(alt_currency_pair, units)
-        self.assertFalse(apu)
-
-        # Add a position and then add units to it
-        self.port.add_new_position(position_type, currency_pair, units, ticker)
-        ps = self.port.positions[currency_pair]
-        # Test for addition of units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.51878")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.51928")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65842")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65821")
-
-        add_units = Decimal("8000")
-        apu = self.port.add_position_units(currency_pair, add_units)
-        self.assertEqual(ps.units, 10000)
-        self.assertEqual(ps.avg_price, Decimal("1.51568"))
-
-        # Test removal of (some) of the units
-        ticker.prices["GBPUSD"]["bid"] = Decimal("1.52017")
-        ticker.prices["GBPUSD"]["ask"] = Decimal("1.52134")
-        ticker.prices["USDGBP"]["bid"] = Decimal("0.65782")
-        ticker.prices["USDGBP"]["ask"] = Decimal("0.65732")
-
-        remove_units = Decimal("3000")
-        rpu = self.port.remove_position_units(currency_pair, remove_units)
-        self.assertTrue(rpu)
-        self.assertEqual(ps.units, Decimal("7000"))
-        self.assertEqual(self.port.balance, Decimal("99988.84"))
-
-        # Close the position
-        cp = self.port.close_position(currency_pair)
-        self.assertTrue(cp)
-        self.assertRaises(KeyError, lambda: self.port.positions[currency_pair])
-        self.assertEqual(self.port.balance, Decimal("99962.80"))
+@pytest.fixture(scope='function')
+def TickerMock1() -> Ticker:
+    _pairs = ["GBPUSD", "EURUSD", "USDJPY"]
+    _prices = {
+        "GBPUSD": {"bid": Decimal("1.30328"), "ask": Decimal("1.50349")},
+        "USDJPY": {"bid": Decimal("105.774"), "ask": Decimal("110.863")},
+    }
+    tm = Ticker(_pairs)
+    # Create decimalaised prices for trade pair
+    for pair, price in _prices.items():
+        _bid, _ask = price['bid'], price['ask']
+        tm.prices[pair]["bid"] = _bid
+        tm.prices[pair]["ask"] = _ask
+        # Create decimalised prices for inverted pair
+        inv_pair, inv_bid, inv_ask = tm.invert_prices(pair, _bid, _ask)
+        tm.prices[inv_pair]["bid"] = inv_bid
+        tm.prices[inv_pair]["ask"] = inv_ask
+    return tm
 
 
-class TestPortfolio2():
-    @pytest.fixture()
-    def port(request) -> Portfolio:
-        home_currency = "GBP"
-        leverage = Decimal("20")
-        equity = Decimal("100000.00")
-        risk_per_trade = Decimal("0.02")
-        ticker = TickerMock()
-        events: 'Queue[Event]' = Queue()
-        port = Portfolio(
-            ticker,
-            events,
-            home_currency=home_currency,
-            leverage=leverage,
-            equity=equity,
-            risk_per_trade=risk_per_trade)
-        return port
-
-    def test_create_equity_file(self, port: Portfolio) -> None:
-        out_file = port.create_equity_file()
-        filepath = os.path.join(OUTPUT_RESULTS_DIR, "backtest.csv")
-        assert out_file.name == str(filepath)
-        assert os.path.isfile(filepath)
-
-        out_file.close()
-        with open(filepath, "r") as f:
-            assert f.read() == "Timestamp,Balance,GBPUSD,EURUSD\n"
-
-    @pytest.mark.parametrize("instrument, order_type, side, time, quote", [
-        ("GBPUSD", "market", "buy", "dummy", "ask"),
-        ("EURUSD", "market", "sell", "dummy", "bid"),
-    ])
-    def test_execute_signal_lackofticker(self,
-                                        port: Portfolio,
-                                        instrument: str,
-                                        order_type: str,
-                                        side: str,
-                                        time: str,
-                                        quote: str) -> None:
-        from testfixtures import LogCapture
-
-        tmp = port.ticker.prices[instrument][quote]
-        port.ticker.prices[instrument][quote] = None
-        with LogCapture() as log:
-            port.execute_signal(signal_event=MockSignalEvent(instrument, order_type, side, time))
-            log.check(
-                ('savoia.portfolio.portfolio', 'INFO', "Unable to execute order as price data was insufficient.")
-            )
-        port.ticker.prices[instrument][quote] = tmp
-
-    @pytest.mark.parametrize("instrument, order_type, side, time, position_type", [
-        ("GBPUSD", "market", "buy", "dummy", "long"),
-        ("EURUSD", "market", "sell", "dummy", "short"),
-    ])
-    def test_execute_signal_NoPositionCreateOne(self,
-                                                port: Portfolio,
-                                                instrument: str,
-                                                order_type: str,
-                                                side: str,
-                                                time: str,
-                                                position_type: str) -> None:
-        port.execute_signal(signal_event=MockSignalEvent(instrument, order_type, side, time))
-        assert port.positions[instrument].home_currency == 'GBP'
-        assert port.positions[instrument].position_type == position_type
-        assert port.positions[instrument].currency_pair == instrument
-        assert port.positions[instrument].units == int(port.trade_units)
-        assert port.positions[instrument].ticker == port.ticker
-
-    @pytest.mark.parametrize("instrument, order_type, side1, time, side2, trade_units_offset, ex_position_type, ex_units", [
-        ("GBPUSD", "market", "buy", "dummy", "buy", 0, "long", 4000),
-        ("GBPUSD", "market", "buy", "dummy", "buy", +1, "long", 4001),
-        ("GBPUSD", "market", "buy", "dummy", "buy", -1, "long", 3999),
-        ("GBPUSD", "market", "buy", "dummy", "sell", 0, "square", "dummy"),
-        ("GBPUSD", "market", "buy", "dummy", "sell", +1, "short", 1),
-        ("GBPUSD", "market", "buy", "dummy", "sell", -1, "long", 1),
-        ("GBPUSD", "market", "sell", "dummy", "buy", 0, "square", "dummy"),
-        ("GBPUSD", "market", "sell", "dummy", "buy", +1, "long", 1),
-        ("GBPUSD", "market", "sell", "dummy", "buy", -1, "short", 1),
-        ("GBPUSD", "market", "sell", "dummy", "sell", 0, "short", 4000),
-        ("GBPUSD", "market", "sell", "dummy", "sell", +1, "short", 4001),
-        ("GBPUSD", "market", "sell", "dummy", "sell", -1, "short", 3999),
-        ("EURUSD", "market", "buy", "dummy", "buy", 0, "long", 4000),
-        ("EURUSD", "market", "buy", "dummy", "buy", +1, "long", 4001),
-        ("EURUSD", "market", "buy", "dummy", "buy", -1, "long", 3999),
-        ("EURUSD", "market", "buy", "dummy", "sell", 0, "square", "dummy"),
-        ("EURUSD", "market", "buy", "dummy", "sell", +1, "short", 1),
-        ("EURUSD", "market", "buy", "dummy", "sell", -1, "long", 1),
-        ("EURUSD", "market", "sell", "dummy", "buy", 0, "square", "dummy"),
-        ("EURUSD", "market", "sell", "dummy", "buy", +1, "long", 1),
-        ("EURUSD", "market", "sell", "dummy", "buy", -1, "short", 1),
-        ("EURUSD", "market", "sell", "dummy", "sell", 0, "short", 4000),
-        ("EURUSD", "market", "sell", "dummy", "sell", +1, "short", 4001),
-        ("EURUSD", "market", "sell", "dummy", "sell", -1, "short", 3999),
-    ])
-    def test_execute_signal_IfPositionExsists(
-        self, port: Portfolio, instrument: str, order_type: str, side1: str, time: str,
-        side2: str, trade_units_offset: int, ex_position_type: str, ex_units: Union[int, str]
-    ) -> None:
-        port.execute_signal(signal_event=MockSignalEvent(instrument, order_type, side1, time))
-
-        port.trade_units = port.trade_units + trade_units_offset
-        port.execute_signal(signal_event=MockSignalEvent(instrument, order_type, side2, time))
-
-        if ex_position_type == "square":
-            with pytest.raises(KeyError):
-                port.positions[instrument]
-        else:
-            assert port.positions[instrument].position_type == ex_position_type
-            assert port.positions[instrument].units == ex_units
+# pair, home_currency, exec_price, units, exit_price, exit_units,
+# equity, exp_balance, exp_upl, exp_equity
+data5 = [
+    ('GBPUSD', 'JPY', '1.40349', '-1400', '1.3', '1800',
+     '10000', '25325.1717640', '138.77548800', '25463.9472520'),
+    ('USDJPY', 'JPY', '106.074', '4.8', '108', '-8.3',
+    '100', '109.244800', '-10.02050 ', '99.22430')
+]
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize('pair, home_currency, exec_price, units,' +
+                    'exit_price, exit_units,' +
+                    'equity, exp_balance, exp_upl, exp_equity', data5)
+def test_execute_fill_exit_entry(
+        pair: Pair, home_currency: str, exec_price: str, units: str,
+        exit_price: str, exit_units: str,
+        equity: str, exp_balance: str, exp_upl: str, exp_equity: str,
+        TickerMock1: Ticker) -> None:
+    port = Portfolio(TickerMock1, Queue(), home_currency, ['GBPUSD', 'USDJPY'],
+        Decimal(equity), True)
+    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
+        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    port.execute_fill(FillEvent('ref123', pair, Decimal(exit_units),
+        Decimal(exit_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    
+    assert port.balance == Decimal(exp_balance)
+    assert port.upl == Decimal(exp_upl)
+    assert port.equity == Decimal(exp_equity)
+
+
+# ================================================================
+# update_portfolio()
+# ================================================================
+@pytest.fixture(scope='function')
+def TickerMock2() -> Ticker:
+    _pairs = ["GBPUSD", "EURUSD", "USDJPY"]
+    _prices = {
+        "GBPUSD": {"bid": Decimal("1.2541"), "ask": Decimal("1.2543")},
+        "USDJPY": {"bid": Decimal("107.25"), "ask": Decimal("107.80")},
+    }
+    tm = Ticker(_pairs)
+    # Create decimalaised prices for trade pair
+    for pair, price in _prices.items():
+        _bid, _ask = price['bid'], price['ask']
+        tm.prices[pair]["bid"] = _bid
+        tm.prices[pair]["ask"] = _ask
+        # Create decimalised prices for inverted pair
+        inv_pair, inv_bid, inv_ask = tm.invert_prices(pair, _bid, _ask)
+        tm.prices[inv_pair]["bid"] = inv_bid
+        tm.prices[inv_pair]["ask"] = inv_ask
+    return tm
+
+
+data6 = [
+    ('JPY', 'GBPUSD', '1.60328', '1200', '100000',
+        '100000', '-44408.106', '55591.894'),
+    ('JPY', 'GBPUSD', '1.40349', '-200', '5000',
+        '5000', '3229.6455', '8229.6455'),
+    ('JPY', 'USDJPY', '91.7740', '0.80', '15',
+        '15', '12.3808', '27.3808'),
+    ('JPY', 'USDJPY', '113.063', '-0.5', '4',
+        '4', '2.6315', '6.6315')
+]
+
+
+@pytest.mark.parametrize('home_currency, pair, exec_price, units, equity,' +
+                         'exp_balance, exp_upl, exp_equity', data6)
+def test_update_portfolio(home_currency: str, pair: Pair, exec_price: str,
+        units: str, equity: str, exp_balance: str, exp_upl: str,
+        exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
+    port = Portfolio(TickerMock1, Queue(), home_currency,
+        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
+    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
+        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    
+    for _pair in ['USDJPY', 'GBPUSD']:
+        bid = TickerMock2.prices[_pair]['bid']
+        ask = TickerMock2.prices[_pair]['ask']
+
+        TickerMock1.prices[_pair]["bid"] = bid
+        TickerMock1.prices[_pair]["ask"] = ask
+
+        # Create decimalised prices for inverted pair
+        inv_pair, inv_bid, inv_ask = TickerMock2.invert_prices(_pair, bid, ask)
+        TickerMock1.prices[inv_pair]["bid"] = inv_bid
+        TickerMock1.prices[inv_pair]["ask"] = inv_ask
+
+    port.update_portfolio(TickEvent(pair, pd.Timestamp('2020-07-08 21:56:00'),
+        Decimal('111'), Decimal('222')))
+    
+    assert port.balance == Decimal(exp_balance)
+    assert port.upl == Decimal(exp_upl)
+    assert port.equity == Decimal(exp_equity)

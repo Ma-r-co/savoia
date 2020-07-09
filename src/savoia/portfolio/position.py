@@ -156,12 +156,16 @@ class Position():
         _updated_upl: Decimal
         _delta_upl: Decimal
         _delta_upl_qh: Decimal
-        
-        _price_side = 'bid' if self.units >= 0 else 'ask'
-        _updated_upl = (self.price_cur[_price_side] - self.avg_price) * \
-            self.units
-        _delta_upl = _updated_upl - self.upl
 
-        self.upl = _updated_upl
-        _delta_upl_qh = _delta_upl * self._get_qh_factor()
+        # if position is square, no need for update.
+        if self.units == 0:
+            _delta_upl_qh = Decimal('0')
+        else:
+            _price_side = 'bid' if self.units >= 0 else 'ask'
+            _updated_upl = (self.price_cur[_price_side] - self.avg_price) * \
+                self.units
+            _delta_upl = _updated_upl - self.upl
+
+            self.upl = _updated_upl
+            _delta_upl_qh = _delta_upl * self._get_qh_factor()
         return _delta_upl_qh

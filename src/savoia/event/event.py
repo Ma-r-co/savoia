@@ -30,19 +30,22 @@ class TickEvent(Event):
 
 
 class SignalEvent(Event):
-    def __init__(self, instrument: Pair, order_type: str, side: str,
-            time: pd.Timestamp):
+    def __init__(self, ref: str, instrument: Pair, order_type: str,
+            units: Decimal, time: pd.Timestamp,
+            price: Union[Decimal, None] = None):
         self.type = EventType('SIGNAL')
+        self.ref = ref
         self.instrument: Pair = instrument
         self.order_type = order_type
-        self.side = side
+        self.units = units
         self.time = time  # Time of the last tick that generated the signal
+        self.price = price
 
     def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Order Type: %s, Side: %s, Time: %s" \
+        return "Type: %s, Instrument: %s, Order Type: %s, Units: %s, Time: %s" \
             % (
                 str(self.type), str(self.instrument),
-                str(self.order_type), str(self.side), str(self.time)
+                str(self.order_type), str(self.units), str(self.time)
             )
 
     def __repr__(self) -> str:
@@ -50,19 +53,21 @@ class SignalEvent(Event):
 
 
 class OrderEvent(Event):
-    def __init__(self, instrument: Pair, units: int, order_type: str,
-            side: str):
+    def __init__(self, ref: str, instrument: Pair, units: int, order_type: str,
+            time: pd.Timestamp, price: Union[Decimal, None] = None):
         self.type = EventType('ORDER')
+        self.ref = ref
         self.instrument: Pair = instrument
         self.units = units
         self.order_type = order_type
-        self.side = side
+        self.time = time
+        self.price = price
 
     def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Units: %s, Order Type: %s, Side: %s" \
+        return "Type: %s, Instrument: %s, Units: %s, Order Type: %s, Price: %s"\
             % (
                 str(self.type), str(self.instrument), str(self.units),
-                str(self.order_type), str(self.side)
+                str(self.order_type), str(self.price)
             )
 
     def __repr__(self) -> str:
@@ -70,20 +75,21 @@ class OrderEvent(Event):
 
 
 class FillEvent(Event):
-    def __init__(self, instrument: Pair, units: int, price: Decimal, side: str,
-            status: str):
+    def __init__(self, ref: str, instrument: Pair, units: int, price: Decimal,
+            status: str, time: pd.Timestamp):
         self.type = EventType('FILL')
+        self.ref = ref
         self.instrument: Pair = instrument
         self.units = units
         self.price = price
-        self.side = side
         self.status = status
+        self.time = time
 
     def __str__(self) -> str:
-        return ("Type: %s, Instrument: %s, Units: %s, price: %s, Side: %s" +
+        return ("Type: %s, Instrument: %s, Units: %s, Price: %s, Time: %s" +
             ", Status: %s") % (
                 str(self.type), str(self.instrument), str(self.units),
-                str(self.price), str(self.side), str(self.status)
+                str(self.price), str(self.time), str(self.status)
         )
 
     def __repr__(self) -> str:
