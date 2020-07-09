@@ -250,17 +250,17 @@ def TickerMock2() -> Ticker:
 
 
 data6 = [
-    ('JPY', 'GBPUSD', '1.60328', '1200', '-59.016', '-419.016', '-6329.4660'),
-    ('JPY', 'GBPUSD', '1.40349', '-200', '49.838', '29.838', '5345.1255'),
-    ('JPY', 'USDJPY', '91.7740', '0.80', '1.18080', '12.3808', '1.18080'),
-    ('JPY', 'USDJPY', '113.063', '-0.5', '1.5315', '2.6315', '1.5315')
+    ('JPY', 'GBPUSD', '1.60328', '1200', '-419.016', '-44939.466'),
+    ('JPY', 'GBPUSD', '1.40349', '-200', '29.838', '3200.1255'),
+    ('JPY', 'USDJPY', '91.7740', '0.80', '12.3808', '12.3808'),
+    ('JPY', 'USDJPY', '113.063', '-0.5', '2.6315', '2.6315')
 ]
 
 
 @pytest.mark.parametrize('home_currency, pair, exec_price, units,' +
-                         'exp_delta_upl, exp_upl, exp_delta_upl_qh', data6)
+                         'exp_upl, exp_upl_qh', data6)
 def test_update_position_price(home_currency: str, pair: Pair, exec_price: str,
-        units: str, exp_delta_upl: str, exp_upl: str, exp_delta_upl_qh: str,
+        units: str, exp_upl: str, exp_upl_qh: str,
         TickerMock: Ticker, TickerMock2: Ticker) \
         -> None:
     ps = Position(home_currency, pair, TickerMock)
@@ -268,7 +268,7 @@ def test_update_position_price(home_currency: str, pair: Pair, exec_price: str,
     
     ps.ticker = TickerMock2
     ps._set_up_currency_pairs()
-    _delta_upl_qh = ps.update_position_price()
+    _upl_qh = ps.update_position_price()
 
-    assert _delta_upl_qh == Decimal(exp_delta_upl_qh)
+    assert _upl_qh == Decimal(exp_upl_qh)
     assert ps.upl == Decimal(exp_upl)

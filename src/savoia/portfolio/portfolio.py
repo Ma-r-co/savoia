@@ -91,11 +91,14 @@ class Portfolio(object):
     def update_portfolio(self, event: TickEvent) -> None:
         """
         This updates all positions ensuring an up to date
-        unrealised profit and loss (PnL).
+        unrealised profit and loss (upl).
         """
-        _delta_upl: Decimal
-        _delta_upl = self.positions[event.instrument].update_position_price()
-        self._update_equity(Decimal('0'), _delta_upl)
+        _upl: Decimal = Decimal('0')
+
+        for _pos in self.positions.values():
+            _upl += _pos.update_position_price()
+        self.upl = _upl
+        self._update_equity()
         if self.isBacktest:
             out_line = f'{event.time}, {self.equity}'
             for pair in self.ticker.pairs:
@@ -136,8 +139,8 @@ class Portfolio(object):
 
         self._update_equity(_delta_balance, _delta_upl)
 
-    def _update_equity(self, delta_balance: Decimal, delta_upl: Decimal) \
-            -> None:
+    def _update_equity(self, delta_balance: Decimal = Decimal('0'),
+            delta_upl: Decimal = Decimal('0')) -> None:
         self.balance += delta_balance
         self.upl += delta_upl
         self.equity = self.balance + self.upl

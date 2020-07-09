@@ -13,9 +13,6 @@ from savoia.event.event import Event, SignalEvent, OrderEvent, FillEvent, \
 from savoia.types.types import Pair
 
 
-# ================================================================
-# update_position_price()
-# ================================================================
 @pytest.fixture(scope='function')
 def TickerMock() -> Ticker:
     _pairs = ["GBPUSD", "USDJPY"]
@@ -69,6 +66,10 @@ def test_create_equity_file(port: Portfolio) -> None:
     with open(filepath, "r") as f:
         assert f.read() == "Timestamp,Balance,GBPUSD,USDJPY\n"
 
+
+# ================================================================
+# execute_signal()
+# ================================================================
 
 @pytest.mark.parametrize("pair, order_type, units, time, price, ref", [
     ("GBPUSD", "limit", "3000", "2020-07-08 12:00:00", '1.234', '11111'),
@@ -202,13 +203,13 @@ def TickerMock2() -> Ticker:
 
 data6 = [
     ('JPY', 'GBPUSD', '1.60328', '1200', '100000',
-        '100000', '-44408.106', '55591.894'),
+     '100000', '-44939.466', '55060.5340'),
     ('JPY', 'GBPUSD', '1.40349', '-200', '5000',
-        '5000', '3229.6455', '8229.6455'),
+     '5000', '3200.12550', '8200.1255'),
     ('JPY', 'USDJPY', '91.7740', '0.80', '15',
-        '15', '12.3808', '27.3808'),
+     '15', '12.3808', '27.3808'),
     ('JPY', 'USDJPY', '113.063', '-0.5', '4',
-        '4', '2.6315', '6.6315')
+     '4', '2.6315', '6.6315')
 ]
 
 
@@ -223,6 +224,44 @@ def test_update_portfolio(home_currency: str, pair: Pair, exec_price: str,
         Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
     
     for _pair in ['USDJPY', 'GBPUSD']:
+        bid = TickerMock2.prices[_pair]['bid']
+        ask = TickerMock2.prices[_pair]['ask']
+
+        TickerMock1.prices[_pair]["bid"] = bid
+        TickerMock1.prices[_pair]["ask"] = ask
+
+        # Create decimalised prices for inverted pair
+        inv_pair, inv_bid, inv_ask = TickerMock2.invert_prices(_pair, bid, ask)
+        TickerMock1.prices[inv_pair]["bid"] = inv_bid
+        TickerMock1.prices[inv_pair]["ask"] = inv_ask
+
+    port.update_portfolio(TickEvent(pair, pd.Timestamp('2020-07-08 21:56:00'),
+        Decimal('111'), Decimal('222')))
+    
+    assert port.balance == Decimal(exp_balance)
+    assert port.upl == Decimal(exp_upl)
+    assert port.equity == Decimal(exp_equity)
+
+
+data7 = [
+    ('JPY', 'GBPUSD', '1.60328', '1200', '100000',
+     '100000', '-38610.000', '61390.0000'),
+    ('JPY', 'GBPUSD', '1.40349', '-200', '5000',
+     '5000', '-2145.000', '2855'),
+]
+
+
+@pytest.mark.parametrize('home_currency, pair, exec_price, units, equity,' +
+                         'exp_balance, exp_upl, exp_equity', data7)
+def test_update_portfolio_home(home_currency: str, pair: Pair, exec_price: str,
+        units: str, equity: str, exp_balance: str, exp_upl: str,
+        exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
+    port = Portfolio(TickerMock1, Queue(), home_currency,
+        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
+    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
+        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    
+    for _pair in ['USDJPY']:
         bid = TickerMock2.prices[_pair]['bid']
         ask = TickerMock2.prices[_pair]['ask']
 
