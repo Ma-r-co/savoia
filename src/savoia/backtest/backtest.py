@@ -5,7 +5,7 @@ from savoia.config.dir_config import CSV_DATA_DIR
 from savoia.types.types import Pair
 from savoia.event.event import Event
 from savoia.datafeed.datafeed import DataFeeder
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from savoia.strategy.strategy import Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import SimulatedExecution

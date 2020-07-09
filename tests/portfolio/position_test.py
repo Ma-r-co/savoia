@@ -1,6 +1,6 @@
 from savoia.portfolio.position import Position
 # from savoia.portfolio.trade import Trade
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from savoia.types.types import Pair
 
 from decimal import Decimal

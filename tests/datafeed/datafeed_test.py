@@ -1,6 +1,6 @@
 import pytest
 from savoia.datafeed.datafeed import DataFeeder, HistoricCSVDataFeeder
-from savoia.datafeed.ticker import Ticker
+from savoia.ticker.ticker import Ticker
 from queue import Queue
 from decimal import Decimal
 import pandas as pd
@@ -17,41 +17,8 @@ def setupDataFeeder() -> Tuple[Ticker, DataFeeder]:
 
 
 # ---------------------------------------------------------------
-# Ticker
-# ---------------------------------------------------------------
-def test_set_up_prices_dict(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
-    """
-    _set_up_prices_dict should return both prices dict and
-    inv-prices dict
-    """
-    ticker, df = setupDataFeeder
-    prices_dict = ticker._set_up_prices_dict()
-    assert sorted(list(prices_dict.keys())) == sorted(
-        ["USDJPY", "JPYUSD", "GBPUSD", "USDGBP"])
-    for v in prices_dict.values():
-        assert v == {'bid': Decimal(0), 'ask': Decimal(0),
-                    'time': pd.Timestamp(0)}
-
-
-@pytest.mark.parametrize('pair, bid, ask, return_pair, return_bid, return_ask',
-                    [("USDJPY", Decimal('106.87'), Decimal('106.90'),
-                    "JPYUSD", Decimal('0.00935454'), Decimal('0.00935716')),
-                    ("EURGBP", Decimal('0.90473'), Decimal('0.90561'),
-                    "GBPEUR", Decimal('1.10422809'), Decimal('1.10530213'))])
-def test_invert_prices(setupDataFeeder: Tuple[Ticker, DataFeeder], pair: str,
-        bid: Decimal, ask: Decimal, return_pair: str, return_bid: Decimal,
-        return_ask: Decimal) -> None:
-    """ invert_prices should return inverted pair, bid and ask prices"""
-    ticker, df = setupDataFeeder
-    inv_pair, inv_bid, inv_ask = ticker.invert_prices(pair, bid, ask)
-    assert inv_pair == return_pair
-    assert inv_bid == return_bid
-    assert inv_ask == return_ask
-
-# ---------------------------------------------------------------
 # DataFeeder
 # ---------------------------------------------------------------
-
 def test_list_all_csv_files(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     """_list_all_csv_files should return a sorted list of csv files in a
     directory
@@ -66,7 +33,8 @@ def test_list_all_csv_files(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     ])
 
 
-def test_list_all_file_dates(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
+def test_list_all_file_dates(setupDataFeeder: Tuple[Ticker, DataFeeder]) \
+        -> None:
     """_list_all_file_dates should return a sorted and not-duplicated list of
     dates in the feed directory.
     """
