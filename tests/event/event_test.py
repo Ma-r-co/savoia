@@ -4,6 +4,7 @@ import pandas as pd
 
 
 class TestEvent():
+    @pytest.mark.skip()
     @pytest.mark.parametrize("instrument, time, bid, ask", [
         ("JPYUSD", "2018-01-16T20:31:22.579385Z", '98.02', '100.13'),
     ])
@@ -24,6 +25,7 @@ class TestEvent():
         assert str(tick) == "Type: TICK, Instrument: %s, Time: %s, Bid: %s, Ask: %s" \
                             % (str(instrument), str(t), str(b), str(a))
 
+    @pytest.mark.skip()
     @pytest.mark.parametrize("instrument, order_type, side, time", [
         ("JPYUSD", "market", "buy", "2018-01-16T20:31:22.579385Z"),
     ])
@@ -41,6 +43,7 @@ class TestEvent():
         assert str(signal) == "Type: SIGNAL, Instrument: %s, Order Type: %s, Side: %s, Time: %s" \
             % (str(instrument), str(order_type), str(side), str(t))
 
+    @pytest.mark.skip()
     @pytest.mark.parametrize("instrument, units, order_type, side", [
         ("JPYUSD", 100, "market", "buy"),
     ])

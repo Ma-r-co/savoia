@@ -35,7 +35,7 @@ class Backtest(object):
     max_iters: int
     iters: int
     logger: Logger
-    events: 'Queue[Event]'
+    event_q: 'Queue[Event]'
 
     def __init__(
         self, pairs: List[Pair], data_feeder: DataFeeder, ticker: Ticker,
@@ -49,14 +49,14 @@ class Backtest(object):
         Initializes the backtest.
         """
         self.pairs = pairs
-        self.events = Queue()
+        self.event_q = Queue()
         self.csv_dir = CSV_DATA_DIR
         self.ticker = Ticker(self.pairs)
-        self.data_feeder = data_feeder(self.ticker, self.events, self.csv_dir)
+        self.data_feeder = data_feeder(self.ticker, self.event_q, self.csv_dir)
         self.strategy_params = strategy_params
         self.strategy = strategy(
             pairs=self.pairs,
-            events=self.events,
+            event_q=self.event_q,
             **self.strategy_params
         )
         self.equity = equity
@@ -64,21 +64,21 @@ class Backtest(object):
         self.max_iters = max_iters
         self.portfolio = portfolio(
             ticker=self.ticker,
-            events_queue=self.events,
+            events_queue=self.event_q,
             home_currency=home_currency,
             leverage=leverage,
             equity=self.equity,
             risk_per_trade=risk_per_trade,
             isBacktest=True
         )
-        self.execution = execution(self.events)
+        self.execution = execution(self.event_q)
         self.logger = getLogger(__name__)
         self.iters = 0
 
     def _run_backtest(self) -> None:
         """
         Carries out an infinite while loop that polls the
-        events queue and directs each event to either the
+        event_q queue and directs each event to either the
         strategy component of the execution handler. The
         loop will then pause for "heartbeat" seconds and
         continue until the maximum number of iterations is
@@ -88,7 +88,7 @@ class Backtest(object):
         while self.iters < self.max_iters and \
                 self.data_feeder.continue_backtest:
             try:
-                event = self.events.get(False)
+                event = self.event_q.get(False)
             except Empty:
                 self.data_feeder.stream_next_tick()
             else:

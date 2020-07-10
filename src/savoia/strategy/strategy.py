@@ -19,9 +19,9 @@ class Strategy(metaclass=ABCMeta):
 
 
 class DummyStrategy(object):
-    def __init__(self, pairs: List[Pair], events: 'Queue[Event]') -> None:
+    def __init__(self, pairs: List[Pair], event_q: 'Queue[Event]') -> None:
         self.pairs = pairs
-        self.events = events
+        self.event_q = event_q
         self.ticks = 0
         self.invested = False
 
@@ -31,12 +31,12 @@ class DummyStrategy(object):
                 if self.invested is False:
                     signal = SignalEvent(self.pairs[0], "market", "buy",
                                          event.time)
-                    self.events.put(signal)
+                    self.event_q.put(signal)
                     self.invested = True
                 else:
                     signal = SignalEvent(self.pairs[0], "market", "sell",
                                          event.time)
-                    self.events.put(signal)
+                    self.event_q.put(signal)
                     self.invested = False
             self.ticks += 1
 
@@ -50,12 +50,12 @@ class MACSAttr(TypedDict):
 
 class MovingAverageCrossStrategy(object):
     def __init__(
-        self, pairs: List[Pair], events: 'Queue[Event]',
+        self, pairs: List[Pair], event_q: 'Queue[Event]',
         short_window: int = 500, long_window: int = 2000
     ) -> None:
         self.pairs: List[Pair] = pairs
         self.pairs_dict = self.create_pairs_dict()
-        self.events = events
+        self.event_q = event_q
         self.short_window = short_window
         self.long_window = long_window
 
@@ -92,11 +92,11 @@ class MovingAverageCrossStrategy(object):
                 if pd["short_sma"] > pd["long_sma"] and not pd["invested"]:
                     signal = SignalEvent(pair, "market", "buy",
                                          event.time)
-                    self.events.put(signal)
+                    self.event_q.put(signal)
                     pd["invested"] = True
                 if pd["short_sma"] < pd["long_sma"] and pd["invested"]:
                     signal = SignalEvent(pair, "market", "sell",
                                          event.time)
-                    self.events.put(signal)
+                    self.event_q.put(signal)
                     pd["invested"] = False
             pd["ticks"] += 1

@@ -1,4 +1,5 @@
-from decimal import ROUND_HALF_EVEN, FloatOperation, DefaultContext, BasicContext, setcontext, Decimal
+from decimal import ROUND_HALF_EVEN, FloatOperation, \
+    DefaultContext, BasicContext, setcontext, Decimal
 
 
 def initializeDecimalContext() -> None:
