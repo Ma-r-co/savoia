@@ -1,9 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from savoia.event.event import OrderEvent, FillEvent, Event
-from savoia.types.types import Pair
+from savoia.config.decimal_config import DECIMAL_PLACES
 
-from queue import Queue
+import pandas as pd
+from queue import Queue, Empty
 from decimal import Decimal
+from logging import getLogger, Logger
+import time
 
 
 class ExecutionHandler(metaclass=ABCMeta):
@@ -12,37 +15,67 @@ class ExecutionHandler(metaclass=ABCMeta):
     backtesting and live trading system.
     """
     @abstractmethod
-    def __init__(self, events_queue: 'Queue[Event]'):
+    def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]', 
+            isBacktest: bool = True, heartbeat: float = 3):
         pass
 
     @abstractmethod
-    def execute_order(self, event: OrderEvent) -> None:
+    def _execute_order(self, event: OrderEvent) -> None:
         """
         Send the order to the brokerage.
         """
         pass
 
     @abstractmethod
-    def _return_fill_event(self, pair: Pair, units: Decimal, price: Decimal,
-            side: str, status: str) -> None:
+    def _return_fill_event(self, event: FillEvent) -> None:
         """Return a Fill event"""
+        pass
+
+    @abstractmethod
+    def run(self) -> None:
         pass
 
 
 class SimulatedExecution(ExecutionHandler):
-    events_queue: 'Queue[Event]'
+    logger: Logger
+    event_q: 'Queue[Event]'
+    exec_q: 'Queue[Event]'
 
-    def __init__(self, events_queue: 'Queue[Event]') -> None:
-        self.events_queue = events_queue
+    def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]',
+            isBacktest: bool = True, heartbeat: float = 0) -> None:
+        self.logger = getLogger(__name__)
+        self.exec_q = exec_q
+        self.event_q = event_q
+        self.isBacktest = isBacktest
+        self.heartbeat = heartbeat
 
-    def execute_order(self, event: OrderEvent) -> None:
+    def _execute_order(self, event: OrderEvent) -> None:
         import random
-        self._return_fill_event(event.instrument, event.units,
-            Decimal(str(random.uniform(0.9889, 1.1212))), event.side, 'filled')
+        ref = event.ref
+        instrument = event.instrument
+        units = event.units
+        price = event.price * Decimal(str(random.uniform(0.99, 1.01)))
+        price = price.quantize(DECIMAL_PLACES)
+        status = 'filled'
+        dt = event.time + pd.offsets.Second(random.randint(3, 10))
+        fillevent = FillEvent(ref, instrument, units, price, status, dt)
+        self._return_fill_event(fillevent)
 
-    def _return_fill_event(self, pair: Pair, units: Decimal, price: Decimal,
-            side: str, status: str) -> None:
-        self.events_queue.put(FillEvent(pair, units, price, side, status))
+    def _return_fill_event(self, event: FillEvent) -> None:
+        self.event_q.put(event)
+    
+    def run(self) -> None:
+        while True:
+            try:
+                _event = self.exec_q.get(False)
+            except Empty:
+                pass
+            else:
+                if _event is None:
+                    break
+                else:
+                    self._execute_order(_event)
+            time.sleep(self.heartbeat)
 
 
 # class OANDAExecutionHandler(ExecutionHandler):

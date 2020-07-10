@@ -53,8 +53,8 @@ class SignalEvent(Event):
 
 
 class OrderEvent(Event):
-    def __init__(self, ref: str, instrument: Pair, units: int, order_type: str,
-            time: pd.Timestamp, price: Union[Decimal, None] = None):
+    def __init__(self, ref: str, instrument: Pair, units: int, price: Decimal,
+            order_type: str, time: pd.Timestamp):
         self.type = EventType('ORDER')
         self.ref = ref
         self.instrument: Pair = instrument

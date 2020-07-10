@@ -118,8 +118,9 @@ class Portfolio(object):
         # All necessary pricing data is available,
         # we can execute
         if _execute:
-            order = OrderEvent(event.ref, event.instrument, event.units,
-                event.order_type, event.time, event.price)
+            order = OrderEvent(
+                ref=event.ref, instrument=event.instrument, units=event.units,
+                price=event.price, order_type=event.order_type, time=event.time)
             self.events_queue.put(order)
             self.logger.info(f"OrderEvent Issued: {order}")
         else:
