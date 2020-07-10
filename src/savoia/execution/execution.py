@@ -15,20 +15,8 @@ class ExecutionHandler(metaclass=ABCMeta):
     backtesting and live trading system.
     """
     @abstractmethod
-    def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]', 
+    def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]',
             isBacktest: bool = True, heartbeat: float = 3):
-        pass
-
-    @abstractmethod
-    def _execute_order(self, event: OrderEvent) -> None:
-        """
-        Send the order to the brokerage.
-        """
-        pass
-
-    @abstractmethod
-    def _return_fill_event(self, event: FillEvent) -> None:
-        """Return a Fill event"""
         pass
 
     @abstractmethod

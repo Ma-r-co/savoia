@@ -19,7 +19,7 @@ from typing import Dict, TextIO, List
 class Portfolio(object):
     logger: Logger
     ticker: Ticker
-    events_queue: 'Queue[Event]'
+    event_q: 'Queue[Event]'
     home_currency: str
     equity: Decimal
     balance: Decimal
@@ -29,12 +29,12 @@ class Portfolio(object):
     positions: Dict[Pair, Position]
 
     def __init__(
-        self, ticker: Ticker, events_queue: 'Queue[Event]', home_currency: str,
+        self, ticker: Ticker, event_q: 'Queue[Event]', home_currency: str,
         pairs: List[Pair], equity: Decimal, isBacktest: bool = True
     ):
         self.logger = getLogger(__name__)
         self.ticker = ticker
-        self.events_queue = events_queue
+        self.event_q = event_q
         self.home_currency = home_currency
         self.equity = equity
         self.balance = self.equity
@@ -121,7 +121,7 @@ class Portfolio(object):
             order = OrderEvent(
                 ref=event.ref, instrument=event.instrument, units=event.units,
                 price=event.price, order_type=event.order_type, time=event.time)
-            self.events_queue.put(order)
+            self.event_q.put(order)
             self.logger.info(f"OrderEvent Issued: {order}")
         else:
             self.logger.info(

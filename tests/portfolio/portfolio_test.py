@@ -36,17 +36,17 @@ def TickerMock() -> Ticker:
 @pytest.fixture(scope='function')
 def port(TickerMock: Ticker) -> Portfolio:
     ticker = TickerMock
-    events: 'Queue[Event]' = Queue()
+    event_q: 'Queue[Event]' = Queue()
     home_currency = "JPY"
     pairs = ['GBPUSD', 'USDJPY']
     equity = Decimal("1234567")
-    port = Portfolio(ticker, events, home_currency, pairs, equity)
+    port = Portfolio(ticker, event_q, home_currency, pairs, equity)
     return port
 
 
 def test_init_(port: Portfolio, TickerMock: Ticker) -> None:
     assert port.ticker is TickerMock
-    assert isinstance(port.events_queue, Queue)
+    assert isinstance(port.event_q, Queue)
     assert port.home_currency == 'JPY'
     assert port.equity == Decimal('1234567')
     assert port.balance == Decimal('1234567')
@@ -80,7 +80,7 @@ def test_execute_signal(pair: str, order_type: str, units: str, time: str,
     _price = None if price is None else Decimal(price)
     port.execute_signal(SignalEvent(ref, pair, order_type, Decimal(units),
         pd.Timestamp(time), _price))
-    _order: OrderEvent = port.events_queue.get()
+    _order: OrderEvent = port.event_q.get()
     
     assert _order.instrument == pair
     assert _order.units == Decimal(units)
@@ -120,11 +120,11 @@ def test_execute_signal_lackofticker(port: Portfolio,
 @pytest.fixture(scope='function')
 def port1(TickerMock1: Ticker) -> Portfolio:
     ticker = TickerMock1
-    events: 'Queue[Event]' = Queue()
+    event_q: 'Queue[Event]' = Queue()
     home_currency = "JPY"
     pairs = ['GBPUSD', 'USDJPY']
     equity = Decimal("100000")
-    port1 = Portfolio(ticker, events, home_currency, pairs, equity)
+    port1 = Portfolio(ticker, event_q, home_currency, pairs, equity)
     return port1
 
 

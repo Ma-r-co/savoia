@@ -34,7 +34,7 @@ class DataFeeder(metaclass=ABCMeta):
     backtesting suite.
     """
     logger: Logger
-    events_queue: 'Queue[Event]'
+    event_q: 'Queue[Event]'
     continue_backtest: bool
 
     @abstractmethod
@@ -49,14 +49,14 @@ class HistoricCSVDataFeeder(DataFeeder):
     to the provided events queue and update a Ticker object.
     """
     ticker: Ticker
-    events_queue: 'Queue[Event]'
+    event_q: 'Queue[Event]'
     csv_dir: str
     pair_frames: Dict[Pair, pd.DataFrame]
     file_dates: List[str]
     cur_date_idx: int
     cur_date_pairs: pd.DataFrame
 
-    def __init__(self, ticker: Ticker, events_queue: 'Queue[Event]',
+    def __init__(self, ticker: Ticker, event_q: 'Queue[Event]',
             csv_dir: str) -> None:
         """
         Initialises the HistoricCSVDataFeeder by requesting
@@ -68,12 +68,12 @@ class HistoricCSVDataFeeder(DataFeeder):
 
         Parameters:
         pairs - The list of currency pairs to obtain.
-        events_queue - The events queue to send the ticks to.
+        event_q - The events queue to send the ticks to.
         csv_dir - Absolute directory path to the CSV files.
         """
         self.logger = getLogger(__name__)
         self.ticker = ticker
-        self.events_queue = events_queue
+        self.event_q = event_q
         self.csv_dir = csv_dir
         self.pair_frames = {}
         self.file_dates = self._list_all_file_dates()
@@ -164,4 +164,4 @@ class HistoricCSVDataFeeder(DataFeeder):
         self.ticker.prices[inv_pair]["time"] = index
 
         tev = TickEvent(pair, index, bid, ask)
-        self.events_queue.put(tev)
+        self.event_q.put(tev)
