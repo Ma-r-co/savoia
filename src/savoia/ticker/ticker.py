@@ -56,6 +56,7 @@ class Ticker(object):
         _pair: Pair
         _bid: Decimal
         _ask: Decimal
+        _time: pd.Timestamp
 
         if event.type != 'TICK':
             raise Exception(f"Incorrect EventType: {event.type}, " +
@@ -64,8 +65,11 @@ class Ticker(object):
             _pair = event.instrument
             _bid = event.bid
             _ask = event.ask
+            _time = event.time
             self.prices[_pair]['bid'] = _bid
             self.prices[_pair]['ask'] = _ask
+            self.prices[_pair]['time'] = _time
             inv_pair, inv_bid, inv_ask = self.invert_prices(_pair, _bid, _ask)
             self.prices[inv_pair]["bid"] = inv_bid
             self.prices[inv_pair]["ask"] = inv_ask
+            self.prices[inv_pair]['time'] = _time

@@ -12,7 +12,7 @@ from typing import Tuple
 def setupDataFeeder() -> Tuple[Ticker, DataFeeder]:
     pairs = ["USDJPY", "GBPUSD"]
     ticker = Ticker(pairs)
-    datafeeder = HistoricCSVDataFeeder(ticker, Queue(), './tests/datafeed')
+    datafeeder = HistoricCSVDataFeeder(pairs, Queue(), './tests/datafeed')
     return ticker, datafeeder
 
 
@@ -96,7 +96,8 @@ def test_stream_next_tick(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     values. It shoud also feed a tick event to the queue accordingly.
     """
     ticker, df = setupDataFeeder
-    df.stream_next_tick()
+    df._stream_next_tick()
+    ticker.update_ticker(df.feed_q.get(False))
     pair = 'GBPUSD'
     ask = Decimal('1.50054')
     bid = Decimal('1.49854')
@@ -110,3 +111,10 @@ def test_stream_next_tick(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     assert ticker.prices[inv_pair]["bid"] == inv_bid
     assert ticker.prices[inv_pair]["ask"] == inv_ask
     assert ticker.prices[inv_pair]["time"] == time
+
+
+def test_run(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
+    ticker, df = setupDataFeeder
+    df.run()
+    assert df.continue_backtest is False
+    assert df.feed_q.qsize() == 10
