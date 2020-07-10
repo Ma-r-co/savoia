@@ -24,7 +24,7 @@ class DataFeeder(metaclass=ABCMeta):
 
     The goal of a (derived) DataFeeder object is to output a set of
     bid/ask/timestamp "ticks" for each currency pair and place them into
-    an event queue.
+    an feed queue.
     The latest prices for each currencies will be held within Ticker
     object.
 
@@ -34,7 +34,7 @@ class DataFeeder(metaclass=ABCMeta):
     backtesting suite.
     """
     logger: Logger
-    event_q: 'Queue[Event]'
+    feed_q: 'Queue[Event]'
     continue_backtest: bool
 
     @abstractmethod
@@ -49,14 +49,14 @@ class HistoricCSVDataFeeder(DataFeeder):
     to the provided events queue and update a Ticker object.
     """
     ticker: Ticker
-    event_q: 'Queue[Event]'
+    feed_q: 'Queue[Event]'
     csv_dir: str
     pair_frames: Dict[Pair, pd.DataFrame]
     file_dates: List[str]
     cur_date_idx: int
     cur_date_pairs: pd.DataFrame
 
-    def __init__(self, ticker: Ticker, event_q: 'Queue[Event]',
+    def __init__(self, ticker: Ticker, feed_q: 'Queue[Event]',
             csv_dir: str) -> None:
         """
         Initialises the HistoricCSVDataFeeder by requesting
@@ -68,12 +68,12 @@ class HistoricCSVDataFeeder(DataFeeder):
 
         Parameters:
         pairs - The list of currency pairs to obtain.
-        event_q - The events queue to send the ticks to.
+        feed_q - The events queue to send the ticks to.
         csv_dir - Absolute directory path to the CSV files.
         """
         self.logger = getLogger(__name__)
         self.ticker = ticker
-        self.event_q = event_q
+        self.feed_q = feed_q
         self.csv_dir = csv_dir
         self.pair_frames = {}
         self.file_dates = self._list_all_file_dates()
@@ -164,4 +164,4 @@ class HistoricCSVDataFeeder(DataFeeder):
         self.ticker.prices[inv_pair]["time"] = index
 
         tev = TickEvent(pair, index, bid, ask)
-        self.event_q.put(tev)
+        self.feed_q.put(tev)
