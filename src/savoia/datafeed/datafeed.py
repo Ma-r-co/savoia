@@ -1,7 +1,6 @@
 from decimal import Decimal
 from savoia.config.decimal_config \
     import initializeDecimalContext, DECIMAL_PLACES
-from savoia.ticker.ticker import Ticker
 
 import os
 import re
@@ -35,10 +34,15 @@ class DataFeeder(metaclass=ABCMeta):
     """
     logger: Logger
     feed_q: 'Queue[Event]'
+    pairs: List[Pair]
     continue_backtest: bool
 
     @abstractmethod
-    def stream_next_tick(self) -> None:
+    def __init__(self, pairs: List[Pair], feed_q: 'Queue[Event]'):
+        pass
+
+    @abstractmethod
+    def run(self) -> None:
         pass
 
 
@@ -46,9 +50,10 @@ class HistoricCSVDataFeeder(DataFeeder):
     """
     HistoricCSVDataFeeder is designed to read CSV files of
     tick data for each requested currency pair and stream those
-    to the provided events queue and update a Ticker object.
+    to the provided events queue.
     """
-    ticker: Ticker
+    logger: Logger
+    pairs: List[Pair]
     feed_q: 'Queue[Event]'
     csv_dir: str
     pair_frames: Dict[Pair, pd.DataFrame]
@@ -56,8 +61,8 @@ class HistoricCSVDataFeeder(DataFeeder):
     cur_date_idx: int
     cur_date_pairs: pd.DataFrame
 
-    def __init__(self, ticker: Ticker, feed_q: 'Queue[Event]',
-            csv_dir: str) -> None:
+    def __init__(self, pairs: List[Pair], feed_q: 'Queue[Event]',
+            csv_dir: str):
         """
         Initialises the HistoricCSVDataFeeder by requesting
         the location of the CSV files and a list of symbols.
@@ -72,7 +77,7 @@ class HistoricCSVDataFeeder(DataFeeder):
         csv_dir - Absolute directory path to the CSV files.
         """
         self.logger = getLogger(__name__)
-        self.ticker = ticker
+        self.pairs = pairs
         self.feed_q = feed_q
         self.csv_dir = csv_dir
         self.pair_frames = {}
@@ -113,7 +118,7 @@ class HistoricCSVDataFeeder(DataFeeder):
         ordered, allowing tick data events to be added to the queue
         in a chronological fashion.
         """
-        for p in self.ticker.pairs:
+        for p in self.pairs:
             pair_path = os.path.join(self.csv_dir, '%s_%s.csv' % (p, date_str))
             self.logger.info("start read: %s", str(pair_path))
             self.pair_frames[p] = pd.io.parsers.read_csv(
@@ -138,7 +143,7 @@ class HistoricCSVDataFeeder(DataFeeder):
             self.cur_date_idx += 1
             return True
 
-    def stream_next_tick(self) -> None:
+    def _stream_next_tick(self) -> None:
         try:
             index, row = next(self.cur_date_pairs)
         except StopIteration:
@@ -152,16 +157,11 @@ class HistoricCSVDataFeeder(DataFeeder):
         bid = Decimal(str(row["Bid"])).quantize(DECIMAL_PLACES)
         ask = Decimal(str(row["Ask"])).quantize(DECIMAL_PLACES)
 
-        # Create decimalaised prices for trade pair
-        self.ticker.prices[pair]["bid"] = bid
-        self.ticker.prices[pair]["ask"] = ask
-        self.ticker.prices[pair]["time"] = index
-
-        # Create decimalised prices for inverted pair
-        inv_pair, inv_bid, inv_ask = self.ticker.invert_prices(pair, bid, ask)
-        self.ticker.prices[inv_pair]["bid"] = inv_bid
-        self.ticker.prices[inv_pair]["ask"] = inv_ask
-        self.ticker.prices[inv_pair]["time"] = index
-
         tev = TickEvent(pair, index, bid, ask)
         self.feed_q.put(tev)
+
+    def run(self) -> None:
+        while self.continue_backtest:
+            self.logger.info('Start datafeed')
+            self._stream_next_tick()
+            self.logger.info('Finish datafeed')
