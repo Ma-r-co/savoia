@@ -64,7 +64,7 @@ def test_create_equity_file(port: Portfolio) -> None:
 
     out_file.close()
     with open(filepath, "r") as f:
-        assert f.read() == "Timestamp,Balance,GBPUSD,USDJPY\n"
+        assert f.read() == "Timestamp,Equity,GBPUSD,USDJPY\n"
 
 
 # ================================================================
