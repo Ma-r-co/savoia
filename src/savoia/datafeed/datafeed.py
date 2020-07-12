@@ -14,6 +14,7 @@ from logging import getLogger, Logger
 from typing import List, Dict, Iterator
 from queue import Queue
 from abc import ABCMeta, abstractmethod
+import time
 
 
 class DataFeeder(metaclass=ABCMeta):
@@ -60,6 +61,7 @@ class HistoricCSVDataFeeder(DataFeeder):
     file_dates: List[str]
     cur_date_idx: int
     cur_date_pairs: pd.DataFrame
+    count: int
 
     def __init__(self, pairs: List[Pair], feed_q: 'Queue[Event]',
             csv_dir: str):
@@ -88,6 +90,7 @@ class HistoricCSVDataFeeder(DataFeeder):
             self.file_dates[self.cur_date_idx]
         )
         initializeDecimalContext()
+        self.count = 0
 
     def _list_all_csv_files(self) -> List[str]:
         files = os.listdir(self.csv_dir)
@@ -161,7 +164,17 @@ class HistoricCSVDataFeeder(DataFeeder):
         self.feed_q.put(tev)
 
     def run(self) -> None:
+        """
+        Carries out an infinite while loop that read data and inject
+        Tick events to event_q.
+        """
+        _start = time.time()
+        self.logger.info('Start datafeed')
         while self.continue_backtest:
-            self.logger.info('Start datafeed')
             self._stream_next_tick()
-            self.logger.info('Finish datafeed')
+            self.count += 1
+            if self.count % 1000 == 0:
+                self.logger.info(f'Feeded {self.count}th data.')
+        self.feed_q.put(None)
+        self.logger.info('Finish datafeed: Elapsed Time[sec]: ' +
+            f'{time.time() - _start}')

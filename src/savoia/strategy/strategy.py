@@ -1,7 +1,6 @@
 import copy
 
-from savoia.event.event import SignalEvent
-from savoia.event.event import Event
+from savoia.event.event import SignalEvent, TickEvent, Event
 from savoia.types.types import Pair
 
 
@@ -14,7 +13,7 @@ from abc import ABCMeta, abstractmethod
 
 class Strategy(metaclass=ABCMeta):
     @abstractmethod
-    def calculate_signals(self, event: Event) -> None:
+    def calculate_signals(self, event: TickEvent) -> None:
         pass
 
 
@@ -25,17 +24,29 @@ class DummyStrategy(object):
         self.ticks = 0
         self.invested = False
 
-    def calculate_signals(self, event: Event) -> None:
+    def calculate_signals(self, event: TickEvent) -> None:
         if event.type == 'TICK' and event.instrument == self.pairs[0]:
-            if self.ticks % 5 == 0:
+            if self.ticks % 1500 == 0:
                 if self.invested is False:
-                    signal = SignalEvent(self.pairs[0], "market", "buy",
-                                         event.time)
+                    signal = SignalEvent(
+                        ref=str(self.ticks),
+                        instrument=self.pairs[0],
+                        order_type="market",
+                        units=Decimal(100),
+                        time=event.time,
+                        price=event.bid
+                    )
                     self.event_q.put(signal)
                     self.invested = True
                 else:
-                    signal = SignalEvent(self.pairs[0], "market", "sell",
-                                         event.time)
+                    signal = SignalEvent(
+                        ref=str(self.ticks),
+                        instrument=self.pairs[0],
+                        order_type="market",
+                        units=Decimal(-100),
+                        time=event.time,
+                        price=event.bid
+                    )
                     self.event_q.put(signal)
                     self.invested = False
             self.ticks += 1
@@ -75,7 +86,7 @@ class MovingAverageCrossStrategy(object):
             -> Decimal:
         return ((sma_m_1 * (window - 1)) + price) / window
 
-    def calculate_signals(self, event: Event) -> None:
+    def calculate_signals(self, event: TickEvent) -> None:
         if event.type == 'TICK':
             pair = event.instrument
             price = event.bid

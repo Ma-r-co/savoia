@@ -16,7 +16,7 @@ class ExecutionHandler(metaclass=ABCMeta):
     """
     @abstractmethod
     def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]',
-            isBacktest: bool = True, heartbeat: float = 3):
+            heartbeat: float = 3):
         pass
 
     @abstractmethod
@@ -30,11 +30,10 @@ class SimulatedExecution(ExecutionHandler):
     exec_q: 'Queue[Event]'
 
     def __init__(self, event_q: 'Queue[Event]', exec_q: 'Queue[Event]',
-            isBacktest: bool = True, heartbeat: float = 0) -> None:
+            heartbeat: float = 0) -> None:
         self.logger = getLogger(__name__)
         self.exec_q = exec_q
         self.event_q = event_q
-        self.isBacktest = isBacktest
         self.heartbeat = heartbeat
 
     def _execute_order(self, event: OrderEvent) -> None:
