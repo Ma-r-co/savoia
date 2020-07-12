@@ -54,18 +54,13 @@ def test_open_convert_csv_files_for_day(
     frame including all the ticks of a specified date.
     """
     ticker, df = setupDataFeeder
-    expected_frame = pd.io.parsers.read_csv(
+    expected_frame = open(
         os.path.join(df.csv_dir, 'expected_frame_%s.csv' % (date)),
-        header=0,
-        index_col=0,
-        parse_dates=["Time"],
-        dayfirst=True,
-        names=("Time", "Ask", "Bid", "AskVolume", "BidVolume", "Pair")
+        'r'
     )
     actual_frame = df._open_convert_csv_files_for_day(date)
-    for (a0, a1), (e0, e1) in zip(actual_frame, expected_frame.iterrows()):
-        assert a0 == e0
-        pd.testing.assert_series_equal(a1, e1)
+    for a0, e0 in zip(actual_frame, expected_frame):
+        assert a0 == tuple(e0[:-1].split(','))
 
 
 def test_update_csv_for_day(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
@@ -75,18 +70,12 @@ def test_update_csv_for_day(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     ticker, df = setupDataFeeder
     assert df._update_csv_for_day() is True
     
-    expected_frame = pd.io.parsers.read_csv(
+    expected_frame = open(
         os.path.join(df.csv_dir, 'expected_frame_%s.csv' % (20140102)),
-        header=0,
-        index_col=0,
-        parse_dates=["Time"],
-        dayfirst=True,
-        names=("Time", "Ask", "Bid", "AskVolume", "BidVolume", "Pair")
+        'r'
     )
-    for (a0, a1), (e0, e1) in zip(df.cur_date_pairs,
-                                  expected_frame.iterrows()):
-        assert a0 == e0
-        pd.testing.assert_series_equal(a1, e1)
+    for a0, e0 in zip(df.cur_date_pairs, expected_frame):
+        assert a0 == tuple(e0[:-1].split(','))
 
     assert df._update_csv_for_day() is False
 
@@ -117,4 +106,4 @@ def test_run(setupDataFeeder: Tuple[Ticker, DataFeeder]) -> None:
     ticker, df = setupDataFeeder
     df.run()
     assert df.continue_backtest is False
-    assert df.feed_q.qsize() == 10
+    assert df.feed_q.qsize() == 11

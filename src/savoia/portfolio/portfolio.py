@@ -54,7 +54,7 @@ class Portfolio(object):
     def _create_equity_file(self) -> TextIO:
         filename: str = "backtest.csv"
         out_file: TextIO = open(os.path.join(OUTPUT_RESULTS_DIR, filename), "w")
-        header: str = "Timestamp,Balance"
+        header: str = "Timestamp,Equity"
         for pair in self.ticker.pairs:
             header += ",%s" % pair
         header += "\n"
@@ -102,7 +102,7 @@ class Portfolio(object):
         if self.isBacktest:
             out_line = f'{event.time}, {self.equity}'
             for pair in self.ticker.pairs:
-                out_line += ",{self.positions[pair].upl}"
+                out_line += f",{self.positions[pair].upl}"
             out_line += "\n"
             self.backtest_file.write(out_line)
 
