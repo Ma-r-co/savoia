@@ -29,13 +29,19 @@ def test_return_fill_event(setupSE: Tuple['Queue[Event]', 'Queue[Event]',
         SimulatedExecution]) -> None:
     event_q, exec_q, se = setupSE
     
-    exec_q.put(OrderEvent('ID1234', "USDJPY", Decimal('0.5'), Decimal('107.89'),
-        'market', pd.Timestamp('2020-07-10 20:59:32')))
+    exec_q.put(OrderEvent(
+        ref='ID1234',
+        pair="USDJPY",
+        time=pd.Timestamp('2020-07-10 20:59:32'),
+        order_type='market',
+        units=Decimal('0.5'),
+        price=Decimal('107.89')
+    ))
     exec_q.put(None)
     se.run()
     
     fe: FillEvent = event_q.get(False)
     assert fe.ref == 'ID1234'
-    assert fe.instrument == 'USDJPY'
+    assert fe.pair == 'USDJPY'
     assert fe.units == Decimal('0.5')
     assert fe.status == 'filled'

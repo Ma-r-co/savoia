@@ -1,6 +1,4 @@
 import pandas as pd
-from typing import Union
-from datetime import datetime
 from decimal import Decimal
 
 from savoia.types.types import EventType, Pair
@@ -11,17 +9,17 @@ class Event(object):
 
 
 class TickEvent(Event):
-    def __init__(self, instrument: Pair, time: Union[pd.Timestamp, datetime],
+    def __init__(self, pair: Pair, time: pd.Timestamp,
             bid: Decimal, ask: Decimal) -> None:
         self.type = EventType('TICK')
-        self.instrument: Pair = instrument
-        self.time: Union[pd.Timestamp, datetime] = time
+        self.pair: Pair = pair
+        self.time: pd.Timestamp = time
         self.bid: Decimal = bid
         self.ask: Decimal = ask
 
     def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Time: %s, Bid: %s, Ask: %s" % (
-            str(self.type), str(self.instrument),
+        return "Type: %s, Pair: %s, Time: %s, Bid: %s, Ask: %s" % (
+            str(self.type), str(self.pair),
             str(self.time), str(self.bid), str(self.ask)
         )
 
@@ -30,22 +28,23 @@ class TickEvent(Event):
 
 
 class SignalEvent(Event):
-    def __init__(self, ref: str, instrument: Pair, order_type: str,
-            units: Decimal, time: pd.Timestamp,
-            price: Union[Decimal, None] = None):
+    def __init__(self, ref: str, pair: Pair, time: pd.Timestamp,
+            order_type: str, units: Decimal, price: Decimal):
         self.type = EventType('SIGNAL')
         self.ref = ref
-        self.instrument: Pair = instrument
+        self.pair: Pair = pair
         self.order_type = order_type
         self.units = units
         self.time = time  # Time of the last tick that generated the signal
         self.price = price
 
     def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Order Type: %s, Units: %s, Time: %s" \
+        _form = "Type: %s, Ref: %s, Pair: %s, Time: %s, OrderType: %s, " + \
+            "Units: %s, Price: %s"
+        return _form \
             % (
-                str(self.type), str(self.instrument),
-                str(self.order_type), str(self.units), str(self.time)
+                self.type, self.ref, self.pair, self.time, self.order_type,
+                self.units, self.price
             )
 
     def __repr__(self) -> str:
@@ -53,21 +52,23 @@ class SignalEvent(Event):
 
 
 class OrderEvent(Event):
-    def __init__(self, ref: str, instrument: Pair, units: int, price: Decimal,
-            order_type: str, time: pd.Timestamp):
+    def __init__(self, ref: str, pair: Pair, time: pd.Timestamp,
+            order_type: str, units: Decimal, price: Decimal):
         self.type = EventType('ORDER')
-        self.ref = ref
-        self.instrument: Pair = instrument
-        self.units = units
+        self.ref: str = ref
         self.order_type = order_type
+        self.pair: Pair = pair
+        self.units = units
         self.time = time
         self.price = price
 
     def __str__(self) -> str:
-        return "Type: %s, Instrument: %s, Units: %s, Order Type: %s, Price: %s"\
+        _form = "Type: %s, Ref: %s, Pair: %s, Time: %s, OrderType: %s, " + \
+            "Units: %s, Price: %s"
+        return _form \
             % (
-                str(self.type), str(self.instrument), str(self.units),
-                str(self.order_type), str(self.price)
+                self.type, self.ref, self.pair, self.time, self.order_type,
+                self.units, self.price
             )
 
     def __repr__(self) -> str:
@@ -75,21 +76,22 @@ class OrderEvent(Event):
 
 
 class FillEvent(Event):
-    def __init__(self, ref: str, instrument: Pair, units: int, price: Decimal,
-            status: str, time: pd.Timestamp):
+    def __init__(self, ref: str, pair: Pair, time: pd.Timestamp,
+            units: int, price: Decimal, status: str):
         self.type = EventType('FILL')
         self.ref = ref
-        self.instrument: Pair = instrument
+        self.pair: Pair = pair
         self.units = units
         self.price = price
         self.status = status
         self.time = time
 
     def __str__(self) -> str:
-        return ("Type: %s, Instrument: %s, Units: %s, Price: %s, Time: %s" +
-            ", Status: %s") % (
-                str(self.type), str(self.instrument), str(self.units),
-                str(self.price), str(self.time), str(self.status)
+        _form = "Type: %s, Ref: %s, Pair: %s, Time: %s, " + \
+            "Units: %s, Price: %s, Status: %s"
+        return _form % (
+            self.type, self.ref, self.pair, self.time,
+            self.units, self.price, self.status
         )
 
     def __repr__(self) -> str:

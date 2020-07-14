@@ -62,7 +62,7 @@ class Ticker(object):
             raise Exception(f"Incorrect EventType: {event.type}, " +
                 "expected 'TICK' event.")
         else:
-            _pair = event.instrument
+            _pair = event.pair
             _bid = event.bid
             _ask = event.ask
             _time = event.time

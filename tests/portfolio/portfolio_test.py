@@ -78,11 +78,16 @@ def test_create_equity_file(port: Portfolio) -> None:
 def test_execute_signal(pair: str, order_type: str, units: str, time: str,
         price: str, port: Portfolio, ref: str) -> None:
     _price = None if price is None else Decimal(price)
-    port.execute_signal(SignalEvent(ref, pair, order_type, Decimal(units),
-        pd.Timestamp(time), _price))
+    port.execute_signal(SignalEvent(
+        ref=ref,
+        pair=pair,
+        time=pd.Timestamp(time),
+        order_type=order_type,
+        units=Decimal(units),
+        price=_price))
     _order: OrderEvent = port.event_q.get()
     
-    assert _order.instrument == pair
+    assert _order.pair == pair
     assert _order.units == Decimal(units)
     assert _order.order_type == order_type
     assert _order.time == pd.Timestamp(time)
@@ -105,8 +110,14 @@ def test_execute_signal_lackofticker(port: Portfolio,
     port.ticker.prices[pair][quote] = None
     print(port.ticker.prices[pair])
     with LogCapture() as log:
-        port.execute_signal(event=SignalEvent(ref, pair, order_type,
-            Decimal(units), pd.Timestamp(time)))
+        port.execute_signal(event=SignalEvent(
+            ref=ref,
+            pair=pair,
+            time=pd.Timestamp(time),
+            order_type=order_type,
+            units=Decimal(units),
+            price=Decimal('103.2')
+        ))
         log.check(
             ('savoia.portfolio.portfolio', 'INFO', "Unable to execute order " +
              'as price data was insufficient.')
@@ -168,10 +179,22 @@ def test_execute_fill_exit_entry(
         TickerMock1: Ticker) -> None:
     port = Portfolio(TickerMock1, Queue(), home_currency, ['GBPUSD', 'USDJPY'],
         Decimal(equity), True)
-    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
-        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
-    port.execute_fill(FillEvent('ref123', pair, Decimal(exit_units),
-        Decimal(exit_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    port.execute_fill(FillEvent(
+        ref='ref123',
+        pair=pair,
+        time=pd.Timestamp('2020-07-08 21:56:00'),
+        units=Decimal(units),
+        price=Decimal(exec_price),
+        status='filled'
+    ))
+    port.execute_fill(FillEvent(
+        ref='ref123',
+        pair=pair,
+        time=pd.Timestamp('2020-07-08 21:56:00'),
+        units=Decimal(exit_units),
+        price=Decimal(exit_price),
+        status='filled'
+    ))
     
     assert port.balance == Decimal(exp_balance)
     assert port.upl == Decimal(exp_upl)
@@ -220,8 +243,14 @@ def test_update_portfolio(home_currency: str, pair: Pair, exec_price: str,
         exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
     port = Portfolio(TickerMock1, Queue(), home_currency,
         ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
-    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
-        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    port.execute_fill(FillEvent(
+        ref='ref123',
+        pair=pair,
+        time=pd.Timestamp('2020-07-08 21:56:00'),
+        units=Decimal(units),
+        price=Decimal(exec_price),
+        status='filled'
+    ))
     
     for _pair in ['USDJPY', 'GBPUSD']:
         bid = TickerMock2.prices[_pair]['bid']
@@ -258,8 +287,14 @@ def test_update_portfolio_home(home_currency: str, pair: Pair, exec_price: str,
         exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
     port = Portfolio(TickerMock1, Queue(), home_currency,
         ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
-    port.execute_fill(FillEvent('ref123', pair, Decimal(units),
-        Decimal(exec_price), 'filled', pd.Timestamp('2020-07-08 21:56:00')))
+    port.execute_fill(FillEvent(
+        ref='ref123',
+        pair=pair,
+        time=pd.Timestamp('2020-07-08 21:56:00'),
+        units=Decimal(units),
+        price=Decimal(exec_price),
+        status='filled'
+    ))
     
     for _pair in ['USDJPY']:
         bid = TickerMock2.prices[_pair]['bid']

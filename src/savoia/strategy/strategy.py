@@ -25,12 +25,12 @@ class DummyStrategy(object):
         self.invested = False
 
     def calculate_signals(self, event: TickEvent) -> None:
-        if event.type == 'TICK' and event.instrument == self.pairs[0]:
+        if event.type == 'TICK' and event.pair == self.pairs[0]:
             if self.ticks % 1500 == 0:
                 if self.invested is False:
                     signal = SignalEvent(
                         ref=str(self.ticks),
-                        instrument=self.pairs[0],
+                        pair=self.pairs[0],
                         order_type="market",
                         units=Decimal(100),
                         time=event.time,
@@ -41,7 +41,7 @@ class DummyStrategy(object):
                 else:
                     signal = SignalEvent(
                         ref=str(self.ticks),
-                        instrument=self.pairs[0],
+                        pair=self.pairs[0],
                         order_type="market",
                         units=Decimal(-100),
                         time=event.time,
@@ -88,7 +88,7 @@ class MovingAverageCrossStrategy(object):
 
     def calculate_signals(self, event: TickEvent) -> None:
         if event.type == 'TICK':
-            pair = event.instrument
+            pair = event.pair
             price = event.bid
             pd = self.pairs_dict[pair]
             if pd["ticks"] == 0:
