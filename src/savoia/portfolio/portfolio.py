@@ -119,7 +119,7 @@ class Portfolio(object):
         # we can execute
         if _execute:
             order = OrderEvent(
-                ref=event.ref, instrument=event.instrument, units=event.units,
+                ref=event.ref, pair=event.pair, units=event.units,
                 price=event.price, order_type=event.order_type, time=event.time)
             self.event_q.put(order)
             self.logger.info(f"OrderEvent Issued: {order}")
@@ -134,7 +134,7 @@ class Portfolio(object):
         _delta_upl: Decimal
 
         _delta_balance, _delta_upl = \
-            self.positions[event.instrument].reflect_filled_order(
+            self.positions[event.pair].reflect_filled_order(
                 event.units, event.price
             )
 

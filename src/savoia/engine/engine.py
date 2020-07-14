@@ -138,10 +138,11 @@ class Engine(object):
         continue until the maximum number of iterations is
         exceeded.
         """
-        self.logger.info("Running Backtest...")
+        _wait: bool = False
+        self.logger.info("Running engine...")
         while self.iters < self.max_iters and self.toContinue:
             try:
-                event = self.event_q.get(False)
+                event = self.event_q.get(_wait)
             except Empty:
                 try:
                     tick_event = self.feed_q.get(False)
@@ -149,22 +150,27 @@ class Engine(object):
                     pass
                 else:
                     if tick_event is None:
+                        self.logger.info('Acknowledged the end of datafeed.')
                         self.toContinue = False
                     elif tick_event.type != 'TICK':
                         raise Exception
                     else:
+                        self.logger.debug('Process TICK -%s' % tick_event)
                         self.ticker.update_ticker(tick_event)
                         self.portfolio.update_portfolio(tick_event)
                         self.strategy.calculate_signals(tick_event)
             else:
+                _wait = False
                 if event is not None:
                     if event.type == 'SIGNAL':
+                        self.logger.info("Process SIGNAL -%s" % event)
                         self.portfolio.execute_signal(event)
                     elif event.type == 'ORDER':
-                        self.logger.info("Excecution order! :%s" % event)
+                        self.logger.info("Process ORDER -%s" % event)
                         self.exec_q.put(event)
+                        _wait = self.isBacktest
                     elif event.type == 'FILL':
-                        self.logger.info("Fill event! :%s" % event)
+                        self.logger.info("Process FILL -%s" % event)
                         self.portfolio.execute_fill(event)
                     else:
                         raise Exception
@@ -185,9 +191,9 @@ class Engine(object):
         _execution = threading.Thread(target=self.execution.run)
         _engine = threading.Thread(target=self._run_engine)
 
-        _datafeed.start()
         _execution.start()
         _engine.start()
+        _datafeed.start()
 
         _datafeed.join()
         _engine.join()

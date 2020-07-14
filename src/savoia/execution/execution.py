@@ -38,14 +38,16 @@ class SimulatedExecution(ExecutionHandler):
 
     def _execute_order(self, event: OrderEvent) -> None:
         import random
-        ref = event.ref
-        instrument = event.instrument
-        units = event.units
-        price = event.price * Decimal(str(random.uniform(0.99, 1.01)))
-        price = price.quantize(DECIMAL_PLACES)
-        status = 'filled'
-        dt = event.time + pd.offsets.Second(random.randint(3, 10))
-        fillevent = FillEvent(ref, instrument, units, price, status, dt)
+        _price = event.price * Decimal(str(random.uniform(0.99, 1.01)))
+        _time = event.time + pd.offsets.Second(random.randint(3, 10))
+        fillevent = FillEvent(
+            ref=event.ref,
+            pair=event.pair,
+            time=_time,
+            units=event.units,
+            price=_price.quantize(DECIMAL_PLACES),
+            status='filled'
+        )
         self._return_fill_event(fillevent)
 
     def _return_fill_event(self, event: FillEvent) -> None:
@@ -77,13 +79,13 @@ class SimulatedExecution(ExecutionHandler):
 #         return httplib.HTTPSConnection(self.domain)
 
 #     def execute_order(self, event):
-#         instrument = "%s_%s" % (event.instrument[:3], event.instrument[3:])
+#         pair = "%s_%s" % (event.pair[:3], event.pair[3:])
 #         headers = {
 #             "Content-Type": "application/x-www-form-urlencoded",
 #             "Authorization": "Bearer " + self.access_token
 #         }
 #         params = urlencode({
-#             "instrument": instrument,
+#             "pair": pair,
 #             "units": event.units,
 #             "type": event.order_type,
 #             "side": event.side

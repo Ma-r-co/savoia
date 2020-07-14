@@ -1,6 +1,5 @@
 from decimal import Decimal
-from savoia.config.decimal_config \
-    import initializeDecimalContext, DECIMAL_PLACES
+from savoia.config.decimal_config import DECIMAL_PLACES
 
 import os
 import re
@@ -88,7 +87,6 @@ class HistoricCSVDataFeeder(DataFeeder):
         self.cur_date_pairs = self._open_convert_csv_files_for_day(
             self.file_dates[self.cur_date_idx]
         )
-        initializeDecimalContext()
         self.count = 0
 
     def _list_all_csv_files(self) -> List[str]:
@@ -120,22 +118,6 @@ class HistoricCSVDataFeeder(DataFeeder):
         ordered, allowing tick data events to be added to the queue
         in a chronological fashion.
         """
-        # for p in self.pairs:
-        #    pair_path = os.path.join(self.csv_dir, '%s_%s.csv' % (p, date_str))
-        #     self.logger.info("start read: %s", str(pair_path))
-        #     with open(pair_path, 'r') as f:
-
-        #     self.pair_frames[p] = pd.read_csv(
-        #         pair_path,
-        #         header=0,
-        #         index_col=0,
-        #         parse_dates=["Time"],
-        #         dayfirst=True,
-        #         names=("Time", "Ask", "Bid", "AskVolume", "BidVolume")
-        #     )
-        #     self.pair_frames[p]["Pair"] = p
-        #     self.logger.info("end read: %s", str(pair_path))
-        # return pd.concat(self.pair_frames.values()).sort_index().iterrows()
         self.pair_frames = []
         for p in self.pairs:
             pair_path = os.path.join(self.csv_dir, '%s_%s.csv' % (p, date_str))
@@ -145,7 +127,6 @@ class HistoricCSVDataFeeder(DataFeeder):
                 for line in f:
                     self.pair_frames.append(line + f',{p}')
             self.logger.info("end read: %s", str(pair_path))
-        self.logger.info('start sort')
         self.pair_frames.sort()
 
         def _gen() -> Iterator[Tuple[str, str, str, str]]:
