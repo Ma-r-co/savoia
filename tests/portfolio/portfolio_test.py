@@ -126,7 +126,7 @@ def test_execute_signal_lackofticker(port: Portfolio,
             price=Decimal('103.2')
         ))
         log.check(
-            ('savoia.portfolio.portfolio', 'INFO', "Unable to execute order " +
+            ('savoia.portfolio.portfolio', 'ERROR', "Unable to execute order " +
              'as price data was insufficient.')
         )
     port.ticker.prices[pair][quote] = tmp
