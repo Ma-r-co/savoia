@@ -5,6 +5,7 @@ from savoia.ticker.ticker import Ticker
 from savoia.strategy.strategy import Strategy
 from savoia.portfolio.portfolio import Portfolio
 from savoia.execution.execution import ExecutionHandler
+from savoia.result.result import Result, ResultHandler
 from savoia.config.decimal_config import initializeDecimalContext
 
 from logging import getLogger, Logger
@@ -34,6 +35,12 @@ class strategy_params(TypedDict):
         'Queue[Event]']]
 
 
+class result_params(TypedDict):
+    module_name: str
+    params: Dict[str, Union[str, Decimal, int, float, List[Pair],
+        'Queue[Result]']]
+
+
 class engine_params(TypedDict):
     pairs: List[Pair]
     home_currency: str
@@ -53,6 +60,7 @@ class Engine(object):
     datafeed: DataFeeder
     execution: ExecutionHandler
     strategy: Strategy
+    result: ResultHandler
     portfolio: Portfolio
     ticker: Ticker
     equity: Decimal
@@ -63,10 +71,12 @@ class Engine(object):
     event_q: 'Queue[Event]'
     feed_q: 'Queue[Event]'
     exec_q: 'Queue[Event]'
+    result_q: 'Queue[Result]'
 
     def __init__(
         self, engine: engine_params, datafeed: datafeed_params,
-        execution: execution_params, strategy: strategy_params
+        execution: execution_params, strategy: strategy_params,
+        result: result_params
     ):
         """
         Initializes the backtest.
@@ -81,18 +91,20 @@ class Engine(object):
         self.event_q = Queue()
         self.feed_q = Queue()
         self.exec_q = Queue()
+        self.result_q = Queue()
         self.iters = 0
         self.datafeed = self._setup_datafeed(datafeed)
         self.execution = self._setup_execution(execution)
         self.strategy = self._setup_strategy(strategy)
+        self.result = self._setup_result(result)
         self.ticker = Ticker(self.pairs)
         self.portfolio = Portfolio(
             ticker=self.ticker,
             event_q=self.event_q,
+            result_q=self.result_q,
             home_currency=self.home_currency,
             pairs=self.pairs,
-            equity=self.equity,
-            isBacktest=self.isBacktest
+            equity=self.equity
         )
         self.toContinue = True
         initializeDecimalContext()
@@ -127,6 +139,16 @@ class Engine(object):
         _params['event_q'] = self.event_q
 
         exe = getattr(_module, strategy['module_name'])
+        return exe(**_params)
+
+    def _setup_result(self, result: result_params) -> ResultHandler:
+        _module = import_module('savoia.result.result')
+        
+        _params = result['params']
+        _params['pairs'] = self.pairs
+        _params['result_q'] = self.result_q
+
+        exe = getattr(_module, result['module_name'])
         return exe(**_params)
 
     def _run_engine(self) -> None:
@@ -187,10 +209,12 @@ class Engine(object):
         self.portfolio.output_results()
 
     def _run(self) -> None:
+        _result = threading.Thread(target=self.result.run)
         _datafeed = threading.Thread(target=self.datafeed.run)
         _execution = threading.Thread(target=self.execution.run)
         _engine = threading.Thread(target=self._run_engine)
 
+        _result.start()
         _execution.start()
         _engine.start()
         _datafeed.start()
@@ -198,6 +222,8 @@ class Engine(object):
         _datafeed.join()
         _engine.join()
         _execution.join()
+        self.result_q.put(None)
+        _result.join()
 
     def run(self) -> None:
         """
@@ -207,7 +233,7 @@ class Engine(object):
             _start = time.time()
             self.logger.info('Start Backtesting.')
             self._run()
-            self._output_performance()
+            # self._output_performance()
             self.logger.info("Backtest complete. Elapsed Time[Sec]: " +
                 f'{time.time() - _start}')
         else:

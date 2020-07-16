@@ -1,5 +1,4 @@
 from decimal import Decimal
-import os
 import pytest
 
 from queue import Queue
@@ -7,9 +6,9 @@ import pandas as pd
 
 from savoia.portfolio.portfolio import Portfolio
 from savoia.ticker.ticker import Ticker
-from savoia.config.dir_config import OUTPUT_RESULTS_DIR
 from savoia.event.event import Event, SignalEvent, OrderEvent, FillEvent, \
     TickEvent
+from savoia.result.result import Result
 from savoia.types.types import Pair
 
 
@@ -37,34 +36,42 @@ def TickerMock() -> Ticker:
 def port(TickerMock: Ticker) -> Portfolio:
     ticker = TickerMock
     event_q: 'Queue[Event]' = Queue()
+    result_q: 'Queue[Result]' = Queue()
     home_currency = "JPY"
     pairs = ['GBPUSD', 'USDJPY']
     equity = Decimal("1234567")
-    port = Portfolio(ticker, event_q, home_currency, pairs, equity)
+    port = Portfolio(
+        ticker=ticker,
+        event_q=event_q,
+        result_q=result_q,
+        home_currency=home_currency,
+        pairs=pairs,
+        equity=equity
+    )
     return port
 
 
 def test_init_(port: Portfolio, TickerMock: Ticker) -> None:
     assert port.ticker is TickerMock
     assert isinstance(port.event_q, Queue)
+    assert isinstance(port.result_q, Queue)
     assert port.home_currency == 'JPY'
     assert port.equity == Decimal('1234567')
     assert port.balance == Decimal('1234567')
     assert port.upl == Decimal('0')
     assert port.pairs == ['GBPUSD', 'USDJPY']
-    assert port.isBacktest
     assert len(port.positions) == 2
 
 
-def test_create_equity_file(port: Portfolio) -> None:
-    out_file = port._create_equity_file()
-    filepath = os.path.join(OUTPUT_RESULTS_DIR, "backtest.csv")
-    assert out_file.name == str(filepath)
-    assert os.path.isfile(filepath)
+# def test_create_equity_file(port: Portfolio) -> None:
+#     out_file = port._create_equity_file()
+#     filepath = os.path.join(OUTPUT_RESULTS_DIR, "backtest.csv")
+#     assert out_file.name == str(filepath)
+#     assert os.path.isfile(filepath)
 
-    out_file.close()
-    with open(filepath, "r") as f:
-        assert f.read() == "Timestamp,Equity,GBPUSD,USDJPY\n"
+#     out_file.close()
+#     with open(filepath, "r") as f:
+#         assert f.read() == "Timestamp,Equity,GBPUSD,USDJPY\n"
 
 
 # ================================================================
@@ -119,7 +126,7 @@ def test_execute_signal_lackofticker(port: Portfolio,
             price=Decimal('103.2')
         ))
         log.check(
-            ('savoia.portfolio.portfolio', 'INFO', "Unable to execute order " +
+            ('savoia.portfolio.portfolio', 'ERROR', "Unable to execute order " +
              'as price data was insufficient.')
         )
     port.ticker.prices[pair][quote] = tmp
@@ -132,10 +139,18 @@ def test_execute_signal_lackofticker(port: Portfolio,
 def port1(TickerMock1: Ticker) -> Portfolio:
     ticker = TickerMock1
     event_q: 'Queue[Event]' = Queue()
+    result_q: 'Queue[Result]' = Queue()
     home_currency = "JPY"
     pairs = ['GBPUSD', 'USDJPY']
     equity = Decimal("100000")
-    port1 = Portfolio(ticker, event_q, home_currency, pairs, equity)
+    port1 = Portfolio(
+        ticker=ticker,
+        event_q=event_q,
+        result_q=result_q,
+        home_currency=home_currency,
+        pairs=pairs,
+        equity=equity
+    )
     return port1
 
 
@@ -177,8 +192,14 @@ def test_execute_fill_exit_entry(
         exit_price: str, exit_units: str,
         equity: str, exp_balance: str, exp_upl: str, exp_equity: str,
         TickerMock1: Ticker) -> None:
-    port = Portfolio(TickerMock1, Queue(), home_currency, ['GBPUSD', 'USDJPY'],
-        Decimal(equity), True)
+    port = Portfolio(
+        ticker=TickerMock1,
+        event_q=Queue(),
+        result_q=Queue(),
+        home_currency=home_currency,
+        pairs=['GBPUSD', 'USDJPY'],
+        equity=Decimal(equity)
+    )
     port.execute_fill(FillEvent(
         ref='ref123',
         pair=pair,
@@ -241,8 +262,8 @@ data6 = [
 def test_update_portfolio(home_currency: str, pair: Pair, exec_price: str,
         units: str, equity: str, exp_balance: str, exp_upl: str,
         exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
-    port = Portfolio(TickerMock1, Queue(), home_currency,
-        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
+    port = Portfolio(TickerMock1, Queue(), Queue(), home_currency,
+        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity))
     port.execute_fill(FillEvent(
         ref='ref123',
         pair=pair,
@@ -285,8 +306,8 @@ data7 = [
 def test_update_portfolio_home(home_currency: str, pair: Pair, exec_price: str,
         units: str, equity: str, exp_balance: str, exp_upl: str,
         exp_equity: str, TickerMock1: Ticker, TickerMock2: Ticker) -> None:
-    port = Portfolio(TickerMock1, Queue(), home_currency,
-        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity), True)
+    port = Portfolio(TickerMock1, Queue(), Queue(), home_currency,
+        ["GBPUSD", "EURUSD", "USDJPY"], Decimal(equity))
     port.execute_fill(FillEvent(
         ref='ref123',
         pair=pair,

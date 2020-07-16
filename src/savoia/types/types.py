@@ -1,10 +1,11 @@
-from decimal import Decimal
-import pandas as pd
 from typing import NewType
 from typing_extensions import TypedDict
-from enum import IntFlag
+from decimal import Decimal
+import pandas as pd
+
 
 Pair = NewType('Pair', str)
+
 EventType = NewType('EventType', str)
 
 
@@ -15,13 +16,3 @@ class Price(TypedDict):
     bid: Decimal
     ask: Decimal
     time: pd.Timestamp
-
-
-class Side(IntFlag):
-    LONG = 0
-    SHORT = 1
-
-
-class TradeType(IntFlag):
-    ENTRY = 0
-    EXIT = 1
