@@ -4,7 +4,6 @@ import pandas as pd
 
 
 class TestEvent():
-    @pytest.mark.skip()
     @pytest.mark.parametrize("pair, time, bid, ask", [
         ("JPYUSD", "2018-01-16T20:31:22.579385Z", '98.02', '100.13'),
     ])
