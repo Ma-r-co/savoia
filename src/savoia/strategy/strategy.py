@@ -26,7 +26,7 @@ class DummyStrategy(object):
 
     def calculate_signals(self, event: TickEvent) -> None:
         if event.type == 'TICK' and event.pair == self.pairs[0]:
-            if self.ticks % 1500 == 0:
+            if self.ticks % 100 == 0:
                 if self.invested is False:
                     signal = SignalEvent(
                         ref=str(self.ticks),

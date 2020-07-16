@@ -1,6 +1,6 @@
 from savoia.engine.engine import Engine, datafeed_params, \
-    execution_params, strategy_params, engine_params
-from savoia.config.dir_config import CSV_DATA_DIR
+    execution_params, strategy_params, engine_params, result_params
+from savoia.config.dir_config import CSV_DATA_DIR, OUTPUT_RESULTS_DIR
 
 from decimal import Decimal
 import logging.config
@@ -42,6 +42,13 @@ def test_engine_run() -> None:
         'params': {}
     }
 
+    result: result_params = {
+        'module_name': 'FileResultHandler',
+        'params': {
+            'output_dir': OUTPUT_RESULTS_DIR
+        }
+    }
+
     engine: engine_params = {
         'pairs': ['GBPUSD', 'USDJPY'],
         'home_currency': 'JPY',
@@ -55,7 +62,8 @@ def test_engine_run() -> None:
         engine=engine,
         datafeed=datafeed,
         execution=execution,
-        strategy=strategy
+        strategy=strategy,
+        result=result
     )
 
     setup_logging()
