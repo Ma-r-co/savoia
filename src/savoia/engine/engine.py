@@ -185,14 +185,14 @@ class Engine(object):
                 _wait = False
                 if event is not None:
                     if event.type == 'SIGNAL':
-                        self.logger.info("Process SIGNAL -%s" % event)
+                        self.logger.debug("Process SIGNAL -%s" % event)
                         self.portfolio.execute_signal(event)
                     elif event.type == 'ORDER':
-                        self.logger.info("Process ORDER -%s" % event)
+                        self.logger.debug("Process ORDER -%s" % event)
                         self.exec_q.put(event)
                         _wait = self.isBacktest
                     elif event.type == 'FILL':
-                        self.logger.info("Process FILL -%s" % event)
+                        self.logger.debug("Process FILL -%s" % event)
                         self.portfolio.execute_fill(event)
                     else:
                         raise Exception

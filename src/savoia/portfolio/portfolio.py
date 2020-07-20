@@ -83,7 +83,7 @@ class Portfolio(object):
                 ref=event.ref, pair=event.pair, units=event.units,
                 price=event.price, order_type=event.order_type, time=event.time)
             self.event_q.put(order)
-            self.logger.info(f"OrderEvent Issued: {order}")
+            self.logger.debug(f"OrderEvent Issued: {order}")
         else:
             self.logger.error(
                 "Unable to execute order as price data was insufficient."
